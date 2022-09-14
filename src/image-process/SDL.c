@@ -53,7 +53,7 @@ void display_image(SDL_Surface *img)
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    SDL_FreeSurface(img);
+    // SDL_FreeSurface(img);
     IMG_Quit();
     SDL_Quit();
 }
@@ -91,21 +91,26 @@ switch (bpp)
       }
 }
 
-
-
-/*
 int main(void) {
     init_sdl();
     SDL_Surface *img = load_image("img/tigre.bmp");
-    display_image(img);
+    // display_image(img);
 
     SDL_Color rgb;
-    Uint32 data = getpixel(img, 200, 200);
-    SDL_GetRGB(data, img->format, &rgb.r, &rgb.g, &rgb.b);
 
-    printf("r: %d, g: %d, b: %d", rgb.r, rgb.g, rgb.b);
+    printf("height: %d, weight: %d\n", img->h, img->w);
+    for (int i = 0; i < img->w; ++i) 
+    {
+        for (int j = 0; j < img->h; ++j)
+        {
+            Uint32 data = getpixel(img, i, j);
+            SDL_GetRGB(data, img->format, &rgb.r, &rgb.g, &rgb.b);
+            printf("%d, %d, r: %d, g: %d, b: %d\n", i, j, rgb.r, rgb.g, rgb.b);
+        }
+    }
+
+    SDL_FreeSurface(img);
     return 0;
 }
-*/
 
 

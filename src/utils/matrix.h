@@ -1,15 +1,24 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-int **init_matrix();
-void print_matrix();
-void fill_matrix();
-char *toString();
-void clear_matrix();
-void free_matrix();
-int getElement(int i, int j);
-void setElement(int element, int i, int j);
-void copyFromFile(const char *path, int index);
-void copyToFile(const char *path, int index);
+#include <stdlib.h>
+
+struct Matrix
+{
+    size_t cols;
+    size_t lines;
+    int *matrix;
+};
+
+struct Matrix *init_matrix(size_t cols, size_t lines);
+void print_matrix(struct Matrix* m);
+void fill_matrix(struct Matrix *m);
+char *toString(struct Matrix *m);
+void clear_matrix(struct Matrix *m);
+void free_matrix(struct Matrix *m);
+int getElement(struct Matrix *m, int i, int j);
+void setElement(struct Matrix *m, int element, int i, int j);
+struct Matrix *copyFromFile(struct Matrix *m, const char *path, int index);
+void copyToFile(struct Matrix *m, const char *path, int index);
 
 #endif

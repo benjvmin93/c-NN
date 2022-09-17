@@ -8,32 +8,35 @@
 #include <err.h>
 #include <errno.h>
 
-int **matrix = NULL;
-
-int **init_matrix()
+struct Matrix *init_matrix(size_t cols, size_t lines)
 {
-    matrix = malloc(3 * sizeof(int*));
-    if (!matrix)
+    struct Matrix *m = malloc(sizeof(struct Matrix));
+    if (!m)
         return NULL;
-    for (int i = 0; i < 3; ++i)
-    {
-        matrix[i] = malloc(3 * sizeof(int));
-        if (!matrix[i])
-            return NULL;
-    }
+    m->matrix = malloc(cols * lines * sizeof(int));
+    if (!m->matrix)
+        return NULL;
+    
+    m->cols = cols;
+    m->lines = lines;
 
-    return matrix;
+    return m;
 }
 
-void print_matrix()
+void print_matrix(struct Matrix *m)
 {
-    if (!matrix)
+    if (!m)
         return;
+
+    if (!m->matrix)
+        return;
+
+    int *matrix = m->matrix;
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)
         {
-            printf("%d", matrix[i][j]);
+            printf("%d", matrix[i * m->cols + j]);
             if (j < 2)
                 printf(" ");
             else
@@ -42,74 +45,98 @@ void print_matrix()
     }
     printf("\n");
 }
-void fill_matrix()
+
+void fill_matrix(struct Matrix *m)
 {
-    srand(time(0));
+    if (!m)
+        return;
+    if (!m->matrix)
+        return;
+    
+    int *matrix = m->matrix;
+    srand(time(NULL));
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)
         {
-            matrix[i][j] = rand() & 1;
+            matrix[i * m->cols + j] = rand() & 1;
         }
     }
     printf("Matrix randomly filled:\n");
-    print_matrix();
+    print_matrix(m);
 }
-void clear_matrix()
+void clear_matrix(struct Matrix *m)
 {
+    if (!m)
+        return;
+    if (!m->matrix)
+        return;
+    int *matrix = m->matrix;
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)
         {
-            matrix[i][j] = 0;
+            matrix[i * m->cols + j] = 0;
         }
     }
     printf("Matrix cleared.\n");
-    print_matrix();
+    print_matrix(m);
 }
-void free_matrix()
+void free_matrix(struct Matrix *m)
 {
-    if (!matrix)
+    if (!m)
         return;
-    for (int i = 0; i < 3; ++i)
-    {
-        free(matrix[i]);
-    }
-    free(matrix);
-}
-int getElement(int i, int j)
-{
-    if (!matrix)
-        return -1;
-    return matrix[i][j];
-}
-void setElement(int element, int i, int j)
-{
-    if (!matrix)
+
+    if (!m->matrix)
         return;
-    matrix[i][j] = element;
+    
+    free(m->matrix);
+    free(m);
+}
+int getElement(struct Matrix *m, int i, int j)
+{
+    if (!m)
+        err(1, "Matrix.getElement: struct Matrix is NULL.");
+    if (!m->matrix)
+        err(1, "Matrix.getElement: element m->matrix is NULL.");
+    return m->matrix[i * m->cols + j];
+}
+void setElement(struct Matrix *m, int element, int i, int j)
+{
+    if (!m)
+        return;
+    if (!m->matrix)
+        return;
+    m->matrix[i * m->cols + j] = element;
 }
 
-char *toString()
+char *toString(struct Matrix *m)
 {
-    if (!matrix)
+    if (!m)
         return NULL;
+    if (!m->matrix)
+        return NULL;
+
+    int *matrix = m->matrix;
     char *str = malloc((3 * 3) + 1);
-    for (int i = 0; i < 3; ++i)
+    if (!str)
+        return NULL;
+
+    for (size_t i = 0; i < m->cols; ++i)
     {
-        for (int j = 0; j < 3; ++j)
+        for (size_t j = 0; j < m->lines; ++j)
         {
-            printf("Filter: %d\n", matrix[i][j]);
-            str[i * 3 + j] = matrix[i][j] + '0';
+            printf("Filter: %d\n", matrix[i * m->cols + j]);
+            str[i * m->cols + j] = matrix[i * m->cols + j] + '0';
         }
     }
     str[9] = 0;
     return str;
 }
 
-void copyToFile(const char *path, int index)
+void copyToFile(struct Matrix *m, const char *path, int index)
 {
-    char *str = toString();
+    char *str = toString(m);
 
     if (index > 10)
     {
@@ -140,10 +167,10 @@ void copyToFile(const char *path, int index)
     free(str);
 }
 
-void copyFromFile(const char *path, int index)
+/* struct Matrix *copyFromFile(const char *path, int index)
 {
     if (index > 10 || index < 1) 
-        return;
+        return NULL;
     
     FILE *file = fopen(path, "r");
 
@@ -157,9 +184,12 @@ void copyFromFile(const char *path, int index)
     size_t len = 0;
     int i = 0;
     int j = 0;
+    struct Matrix *m = NULL;
     if (getline(&line, &len, file) != -1)
     {
-        clear_matrix();
+        m = init_
+        clear_matrix(m);
+        int *matrix = m->matrix;
         for (int k = 0; line[k]; ++k)
         {
             if (j == 3)
@@ -170,10 +200,12 @@ void copyFromFile(const char *path, int index)
             if (i == 3)
                 break; // Never goes here.
             if (line[k] == '1')
-                matrix[i][j] = 1;
+                matrix[i * m->cols + j] = 1;
             j++;
         }
     }
 
-    print_matrix();
-}
+    print_matrix(m);
+
+    return m;
+}*/

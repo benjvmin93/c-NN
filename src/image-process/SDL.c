@@ -96,10 +96,10 @@ switch (bpp)
 
 void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
 {    
-  Uint32 * const target_pixel = (Uint32 *) ((Uint8 *) surface->pixels
+    Uint32 * const target_pixel = (Uint32 *) ((Uint8 *) surface->pixels
                                              + y * surface->pitch
                                              + x * surface->format->BytesPerPixel);
-  *target_pixel = pixel;
+    *target_pixel = pixel;
 }
 
 SDL_Surface* SPG_CopySurface(SDL_Surface* src)
@@ -107,21 +107,25 @@ SDL_Surface* SPG_CopySurface(SDL_Surface* src)
     return SDL_ConvertSurface(src, SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888), SDL_SWSURFACE);
 }
 
-void applyFilter(SDL_Surface *surface, int x, int y, int **filter)
+void applyFilter(SDL_Surface *surface, int x, int y, int **filter, int **convolved)
 {
-
     Uint32 *pixels = surface->pixels;
     Uint32 *p = pixels + (y * surface->w + x);
 
     for (int i = 0; i < 3; ++i)
     {
+
         for (int j = 0; j < 3; ++j)
         {
             if (!p + (i * 3 + j))
                 break;
             
-            printf("%d\n", filter[i][j]);
-            set_pixel(surface, x, y, p[j * 3 + i] * filter[i][j]);
+            // printf("%d\n", filter[i][j]);
+            // filter++;
+            convolved++;
+            if (filter[j][i] == 0)
+                set_pixel(surface, x + j, y + i, 0);
+            // set_pixel(surface, x, y, p[i * 3 + j] * filter[i][j]);
         }
     }
 
@@ -129,26 +133,47 @@ void applyFilter(SDL_Surface *surface, int x, int y, int **filter)
 
 void filterImage(SDL_Surface *surface)
 {
+    int **convolved = malloc((surface->w / 3) * sizeof(int*));
     int **filter = malloc(3 * sizeof(int*));
+    if (!filter || !convolved)
+        return;
     for (int i = 0; i < 3; ++i)
     {
         filter[i] = malloc(3 * sizeof(int));
+        convolved[i] = malloc((surface->h / 3) * sizeof(int));
+        if (!filter[i] || !convolved[i])
+            return;
     }
 
-    srand(time(NULL));
+
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)
             filter[i][j] = rand() % 2;
     }
 
-    for (int i = 0; i < surface->w; ++i) 
+    printf("Matrix:\n");
+    for (int i = 0; i < 3; ++i)
     {
-        for (int j = 0; j < surface->h; ++j)
+        for (int j = 0; j < 3; ++j)
         {
-            applyFilter(surface, i, j, filter);
+            printf("%d", filter[i][j]);
+            if (j < 2)
+                printf(" ");
+            else
+                printf("\n");
         }
     }
+    printf("\n");
+
+    for (int i = 0; i < surface->w; i++) 
+    {
+        for (int j = 0; j < surface->h; j++)
+        {
+            applyFilter(surface, i, j, filter, convolved);
+        }
+    }
+
     for (int i = 0; i < 3; ++i)
     {
         free(filter[i]);
@@ -156,80 +181,23 @@ void filterImage(SDL_Surface *surface)
     free(filter);
 }
 
-int main(void) {
-    init_sdl();
-    SDL_Surface *img = load_image("img/tigre.bmp");
-    display_image(img);
+void grayscale(SDL_Surface* image_surface){
+	int width = image_surface->w;
+	int height = image_surface->h;
+	Uint32 pixel;
+	Uint8 r,g,b=0;
+	Uint8 avg= 0;
 
-    // Uint32 *pixels = img->pixels;
-
-    
-
-
-   /* SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, img->w, img->h, img->, SDL_PIXELFORMAT_RGBA8888);
-
-    for (int i = 0; i < img->w; ++i)
-    {
-        if (i % 100 == 0)
-                display_image(surface);
-        for (int j = 0; j < img->h; ++j)
-        {
-            printf("img height: %d\nimg_weight: %d\n", img->h, img->w);
-
-            printf("i: %d, j: %d\n", i, j);
-            set_pixel(surface, i, j, pixels[i * img->w + j]);
-            
-        }
-    }*/
-
-
-    SDL_Surface *copy = SPG_CopySurface(img);
-
-    display_image(copy);
-    int i = 5;
-    while (i--)
-    {
-        filterImage(copy);
-        display_image(copy);
-    }
-
-
-   /* SDL_Renderer *renderer = NULL;
-    SDL_Texture *texture = NULL;
-    SDL_PixelFormat *format = NULL;
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 3, 3);
-    format = SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888);
-    SDL_LockTexture(texture, NULL, &tmp, &pitch);
-    pixels = tmp;
-    for (int i = 0; i < img->h; ++i)
-    {
-        for (int j = 0; j < img->w; ++j)
-            pixels[i * img->w + j] = SDL_MapRGBA(format, (Uint8)i, 0, 0, 255);
-    }
-
-    SDL_UnlockTexture(texture);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-
-    SDL_FreeFormat(format);*/
-
-   /* printf("height: %d, weight: %d\n", img->h, img->w);
-    for (int i = 0; i < img->w; ++i) 
-    {
-        for (int j = 0; j < img->h; ++j)
-        {
-            Uint32 data = getpixel(img, i, j);
-            SDL_GetRGB(data, img->format, &rgb.r, &rgb.g, &rgb.b);
-            printf("%d, %d, r: %d, g: %d, b: %d\n", i, j, rgb.r, rgb.g, rgb.b);
-        }
-    }
-*/
-    SDL_FreeSurface(img);
-    SDL_FreeSurface(copy);
-
-
-    return 0;
+	for(int i=0; i<width; i++){
+		for(int j=0; j<height; j++){
+			pixel=getpixel(image_surface,i,j);
+			SDL_GetRGB(pixel, image_surface->format, &r,&g,&b);
+			avg = 0.3*r + 0.59*g + 0.11*b;
+			r = avg;
+			g=r;
+			b=r;
+			pixel = SDL_MapRGB(image_surface->format, r,g,b);
+			set_pixel(image_surface,i,j,pixel);
+		}
+	}
 }
-
-

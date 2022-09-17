@@ -32,12 +32,12 @@ void print_matrix(struct Matrix *m)
         return;
 
     int *matrix = m->matrix;
-    for (int i = 0; i < 3; ++i)
+    for (size_t i = 0; i < m->cols; ++i)
     {
-        for (int j = 0; j < 3; ++j)
+        for (size_t j = 0; j < m->lines; ++j)
         {
-            printf("%d", matrix[i * m->cols + j]);
-            if (j < 2)
+            printf("%d", matrix[j * m->lines + i]);
+            if (j < m->lines - 1)
                 printf(" ");
             else
                 printf("\n");
@@ -91,7 +91,9 @@ void free_matrix(struct Matrix *m)
         return;
     
     free(m->matrix);
+    printf("Matrix freed.\n");
     free(m);
+    printf("Structure freed.\n");
 }
 int getElement(struct Matrix *m, int i, int j)
 {
@@ -107,7 +109,7 @@ void setElement(struct Matrix *m, int element, int i, int j)
         return;
     if (!m->matrix)
         return;
-    m->matrix[i * m->cols + j] = element;
+    m->matrix[j * m->lines + i] = element;
 }
 
 char *toString(struct Matrix *m)

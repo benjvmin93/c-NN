@@ -19,6 +19,8 @@ struct Matrix *init_matrix(size_t cols, size_t lines)
     
     m->cols = cols;
     m->lines = lines;
+    printf("Initialized new matrix.\n");
+    clear_matrix(m);
 
     return m;
 }
@@ -31,12 +33,12 @@ void print_matrix(struct Matrix *m)
     if (!m->matrix)
         return;
 
-    int *matrix = m->matrix;
-    for (size_t i = 0; i < m->cols; ++i)
+    for (size_t i = 0; i < m->lines; ++i)
     {
-        for (size_t j = 0; j < m->lines; ++j)
+        for (size_t j = 0; j < m->cols; ++j)
         {
-            printf("%d", matrix[j * m->lines + i]);
+            int *matrix = m->matrix;
+            printf("%d", matrix[i * m->lines + j]);
             if (j < m->lines - 1)
                 printf(" ");
             else
@@ -46,7 +48,7 @@ void print_matrix(struct Matrix *m)
     printf("\n");
 }
 
-void fill_matrix(struct Matrix *m)
+void fill_matrix(struct Matrix *m, int dbgFlag)
 {
     if (!m)
         return;
@@ -55,15 +57,20 @@ void fill_matrix(struct Matrix *m)
     
     int *matrix = m->matrix;
     srand(time(NULL));
-    for (int i = 0; i < 3; ++i)
+    for (size_t i = 0; i < m->cols; ++i)
     {
-        for (int j = 0; j < 3; ++j)
+        for (size_t j = 0; j < m->cols; ++j)
         {
-            matrix[i * m->cols + j] = rand() & 1;
+            if (dbgFlag == 1)
+                matrix[i * m->cols + j] = rand() % 10;
+            else
+                matrix[i * m->cols + j] = rand() & 1;
         }
     }
+
     printf("Matrix randomly filled:\n");
-    print_matrix(m);
+    if (dbgFlag == 2)
+        print_matrix(m);
 }
 void clear_matrix(struct Matrix *m)
 {
@@ -72,16 +79,16 @@ void clear_matrix(struct Matrix *m)
     if (!m->matrix)
         return;
     int *matrix = m->matrix;
-    for (int i = 0; i < 3; ++i)
+    for (size_t i = 0; i < m->cols; ++i)
     {
-        for (int j = 0; j < 3; ++j)
+        for (size_t j = 0; j < m->lines; ++j)
         {
-            matrix[i * m->cols + j] = 0;
+            matrix[j * m->lines + i] = 0;
         }
     }
-    printf("Matrix cleared.\n");
-    print_matrix(m);
+    printf("Matrix values set to 0.\n\n");
 }
+
 void free_matrix(struct Matrix *m)
 {
     if (!m)
@@ -93,7 +100,7 @@ void free_matrix(struct Matrix *m)
     free(m->matrix);
     printf("Matrix freed.\n");
     free(m);
-    printf("Structure freed.\n");
+    printf("Structure freed.\n\n");
 }
 int getElement(struct Matrix *m, int i, int j)
 {

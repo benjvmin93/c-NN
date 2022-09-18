@@ -2,6 +2,7 @@
 #define NEURALNET_H
 
 #include <stdlib.h>
+#include "../utils/matrix.h"
 
 /*
 const char* labelsReference[] = { "Car",
@@ -18,6 +19,9 @@ struct NeuralNet
 };
 
 struct NeuralNet* init(const char* file);
+
 void freeNeuralNet(struct NeuralNet* neuralNet);
+
+struct Matrix **convolution(struct Matrix **input, struct Matrix *m);
 
 #endif

@@ -23,13 +23,13 @@ int isEqual(struct Matrix *m1, struct Matrix *m2)
 
 int main(void)
 {
-    for (size_t i = 0; i < 1; ++i)
+    for (size_t i = 0; i < 10; ++i)
     {
-        printf("Filter %ld:\n", i);
+        // printf("Filter %ld:\n", i);
         struct Matrix *filter = generate_filter(3, 3);
         sleep(1);
-        print_matrix(filter);
-        printf("\n");
+        // print_matrix(filter);
+        // printf("\n");
         free_matrix(filter);
     }
 

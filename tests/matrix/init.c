@@ -5,7 +5,6 @@
 
 int main(void)
 {
-
     struct Matrix *m = init_matrix(2, 2);
     assert(m->cols == 2);
     assert(m->lines == 2);

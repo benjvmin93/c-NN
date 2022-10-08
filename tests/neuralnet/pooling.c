@@ -18,14 +18,14 @@ int main(void)
 
             // struct Matrix *filter = generate_filter(3, 3);
             // fill_matrix(filter, -1);
-            printf("===========================\n\n");
-            print_matrix(m);
-            printf("\n");
-            print_matrix(filter);
-            printf("\n");
+            // printf("===========================\n\n");
+            // print_matrix(m);
+            // printf("\n");
+            // print_matrix(filter);
+            // printf("\n");
 
             struct Matrix *pooled_feature = pooling(m, filter, 1);
-            print_matrix(pooled_feature);
+            // print_matrix(pooled_feature);
 
             free_matrix(m);
             free_matrix(pooled_feature);

@@ -10,28 +10,26 @@ int main(void)
         for (size_t x = 1; x < 100; ++x)
         {
             struct Matrix *m = init_matrix(x, y);
-            for (size_t i = 0; i < m->cols; ++i)
+            for (size_t i = 0; i < m->lines; ++i)
             {
-                for (size_t j = 0; j < m->lines; ++j)
-                {
-                    // printf("i: %ld, j: %ld\n", i, j);
-                    // printf("cols: %ld, lines: %ld\n", m->cols, m->lines);
+                for (size_t j = 0; j < m->cols; ++j)
+                {                    
                     setElement(m, i, i, j);
                     assert(getElement(m, i, j) == m->matrix[i][j]);
                 }
             }
 
-            int *ptr = getPtr(m);
-            for (size_t i = 0; i < m->cols; ++i)
+            int *ptr = flatMatrix(m);
+            for (size_t i = 0; i < m->lines; ++i)
             {
-                for (size_t j = 0; j < m->lines; ++j)
+                for (size_t j = 0; j < m->cols; ++j)
                 {
-                    if (getElement(m, i, j) != ptr[i * m->lines + j])
+                    if (getElement(m, i, j) != ptr[i * m->cols + j])
                     {
                         printf("ERROR: different elements.\nMatrix:\n");
                         print_matrix(m);
-                        printf("\npos: %ld\n", i * m->lines + j);
-                        printf("\n%d != %d\n", getElement(m, i, j), ptr[i * m->lines + j]);
+                        printf("\npos: %ld\n", i * m->cols + j);
+                        printf("\n%d != %d\n", getElement(m, i, j), ptr[i * m->cols + j]);
                         exit(1);
                     }
                 }

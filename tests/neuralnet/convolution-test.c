@@ -54,13 +54,13 @@ void filter_one()
             struct Matrix *filter = init_matrix(3, 3);
             fill_matrix(filter, 1);
 
-            printf("input:\n");
-            print_matrix(input);
-            printf("\nfilter:\n");
-            print_matrix(filter);
+            // printf("input:\n");
+            // print_matrix(input);
+            // printf("\nfilter:\n");
+            // print_matrix(filter);
             input = convolution(input, filter);
-            printf("\noutput:\n");
-            print_matrix(input);
+            // printf("\noutput:\n");
+            // print_matrix(input);
 
             for (size_t i = 0; i < input->lines; ++i)
             {
@@ -104,13 +104,13 @@ int main(void)
             if (i < 10)
             {
                 // printf("\n========== NEW LOOP ===========\n\n");
-                printf("\ninput:\n");
-                print_matrix(input);
-                printf("\nfilter:\n");
-                print_matrix(filter);
+                // printf("\ninput:\n");
+                // print_matrix(input);
+                // printf("\nfilter:\n");
+                // print_matrix(filter);
                 output = convolution(input, filter);
-                printf("\noutput:\n");
-                print_matrix(output);
+                // printf("\noutput:\n");
+                // print_matrix(output);
             }
             free_matrix(filter);
             free_matrix(input);

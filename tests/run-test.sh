@@ -29,25 +29,33 @@ run_test() {
 
     for file in `ls tests/$1`; do
         if [ "$1" = "matrix" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o $file
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o tests/$file
         elif [ $1 = "neuralnet" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -o $file
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -o tests/$file
         else
             echo "Bad arg: $1"
             exit 1
         fi
 
-        ./$file
+        printf "######################################\n\n"
+
+        if [ "$DEBUG" == "1" ]; then 
+            ./tests/$file 1
+        else
+            ./tests/$file
+        fi
+        
         if [ "$?" -eq 0 ]; then
-            printf "tests/$1/$file: ${CYAN}Succeed${NC}\n"
+            printf "tests/$1/$file: ${CYAN}Succeed${NC}\n\n"
             TESTS_SUCCEED=$(($TESTS_SUCCEED + 1))
         else
-            printf "tests/$1/$file: ${RED}Failed${NC}\n"
+            printf "tests/$1/$file: ${RED}Failed${NC}\n\n"
             TESTS_FAILED=$(($TESTS_FAILED + 1))
         fi
         TESTS_DONE=$(($TESTS_DONE + 1))
-        # rm test
     done
+
+    printf "######################################\n\n"
     printf "\n${BBlue}========================END OF $1 TESTS========================${NC}\n\n"
 }
 
@@ -55,6 +63,10 @@ if [ $# -eq 0 ]; then
     run_all_tests
 else
     run_test $1
+fi
+
+if [ "$DEBUG" == "0" ]; then 
+    rm tests/*.c
 fi
 
 printf "${UBlack}Results:${NC}\n"

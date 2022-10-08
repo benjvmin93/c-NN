@@ -22,6 +22,9 @@ struct NeuralNet* init(const char* file);
 
 void freeNeuralNet(struct NeuralNet* neuralNet);
 
-struct Matrix **convolution(struct Matrix **input, struct Matrix *m);
+int **pad_input(struct Matrix *m, size_t padSize);
+struct Matrix *convolution(struct Matrix *input, struct Matrix *m);
+struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, int stride);
+struct Matrix *generate_filter(size_t cols, size_t lines);
 
 #endif

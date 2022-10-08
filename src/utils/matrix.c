@@ -1,3 +1,4 @@
+#include <stdint.h>
 #define _GNU_SOURCE
 
 #include "matrix.h"
@@ -13,13 +14,19 @@ struct Matrix *init_matrix(size_t cols, size_t lines)
     struct Matrix *m = malloc(sizeof(struct Matrix));
     if (!m)
         return NULL;
-    m->matrix = malloc(cols * lines * sizeof(int));
+    m->matrix = malloc(lines * sizeof(int*));
     if (!m->matrix)
         return NULL;
+
+    for (size_t i = 0; i < lines; ++i)
+    {
+        m->matrix[i] = malloc(cols * sizeof(int));
+        if (!m->matrix[i])
+            return NULL;
+    }
     
     m->cols = cols;
     m->lines = lines;
-    printf("Initialized new matrix.\n");
     clear_matrix(m);
 
     return m;
@@ -33,20 +40,29 @@ void print_matrix(struct Matrix *m)
     if (!m->matrix)
         return;
 
-    for (size_t i = 0; i < m->lines; ++i)
+    for (size_t i = 0; i != m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            int *matrix = m->matrix;
-            printf("%d", matrix[i * m->lines + j]);
-            if (j < m->lines - 1)
-                printf(" ");
-            else
+            int **matrix = m->matrix;
+            printf("%d", matrix[i][j]);
+            if (j == m->cols - 1)
                 printf("\n");
+            else
+                printf("  ");
         }
     }
-    printf("\n");
 }
+
+void free_inside_matrix(struct Matrix *m)
+{
+    for (size_t i = 0; i < m->lines; ++i)
+    {
+        free(m->matrix[i]);
+    }
+    free(m->matrix);
+}
+
 
 void fill_matrix(struct Matrix *m, int dbgFlag)
 {
@@ -55,22 +71,23 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
     if (!m->matrix)
         return;
     
-    int *matrix = m->matrix;
-    srand(time(NULL));
-    for (size_t i = 0; i < m->cols; ++i)
+    int **matrix = m->matrix;
+    time_t t = time(NULL);
+    srand(t);
+    for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            if (dbgFlag == 1)
-                matrix[i * m->cols + j] = rand() % 10;
+            if (dbgFlag == 0)
+                matrix[i][j] = 0;
+            else if (dbgFlag == 1)
+                matrix[i][j] = 1;
+            else if (dbgFlag == 2)
+                matrix[i][j] = rand() % 10;
             else
-                matrix[i * m->cols + j] = rand() & 1;
+                matrix[i][j] = rand() % 2;
         }
     }
-
-    printf("Matrix randomly filled:\n");
-    if (dbgFlag == 2)
-        print_matrix(m);
 }
 void clear_matrix(struct Matrix *m)
 {
@@ -78,15 +95,14 @@ void clear_matrix(struct Matrix *m)
         return;
     if (!m->matrix)
         return;
-    int *matrix = m->matrix;
-    for (size_t i = 0; i < m->cols; ++i)
+    int **matrix = m->matrix;
+    for (size_t i = 0; i < m->lines; ++i)
     {
-        for (size_t j = 0; j < m->lines; ++j)
+        for (size_t j = 0; j < m->cols; ++j)
         {
-            matrix[j * m->lines + i] = 0;
+            matrix[i][j] = 0;
         }
     }
-    printf("Matrix values set to 0.\n\n");
 }
 
 void free_matrix(struct Matrix *m)
@@ -96,11 +112,14 @@ void free_matrix(struct Matrix *m)
 
     if (!m->matrix)
         return;
+
+    for (size_t i = 0; i < m->lines; ++i)
+    {
+        free(m->matrix[i]);
+    }
     
     free(m->matrix);
-    printf("Matrix freed.\n");
     free(m);
-    printf("Structure freed.\n\n");
 }
 int getElement(struct Matrix *m, int i, int j)
 {
@@ -108,7 +127,7 @@ int getElement(struct Matrix *m, int i, int j)
         err(1, "Matrix.getElement: struct Matrix is NULL.");
     if (!m->matrix)
         err(1, "Matrix.getElement: element m->matrix is NULL.");
-    return m->matrix[i * m->cols + j];
+    return m->matrix[i][j];
 }
 void setElement(struct Matrix *m, int element, int i, int j)
 {
@@ -116,34 +135,32 @@ void setElement(struct Matrix *m, int element, int i, int j)
         return;
     if (!m->matrix)
         return;
-    m->matrix[j * m->lines + i] = element;
+    m->matrix[i][j] = element;
 }
 
-char *toString(struct Matrix *m)
+int *flatMatrix(struct Matrix *m)
 {
     if (!m)
         return NULL;
     if (!m->matrix)
         return NULL;
 
-    int *matrix = m->matrix;
-    char *str = malloc((3 * 3) + 1);
-    if (!str)
+    int **matrix = m->matrix;
+    int *mat = malloc((m->cols * m->lines) * sizeof(int));
+    if (!mat)
         return NULL;
 
-    for (size_t i = 0; i < m->cols; ++i)
+    for (size_t i = 0; i < m->lines; ++i)
     {
-        for (size_t j = 0; j < m->lines; ++j)
+        for (size_t j = 0; j < m->cols; ++j)
         {
-            printf("Filter: %d\n", matrix[i * m->cols + j]);
-            str[i * m->cols + j] = matrix[i * m->cols + j] + '0';
+            mat[i * m->cols + j] = matrix[i][j];
         }
     }
-    str[9] = 0;
-    return str;
+    return mat;
 }
 
-void copyToFile(struct Matrix *m, const char *path, int index)
+/* void copyToFile(struct Matrix *m, const char *path, int index)
 {
     char *str = toString(m);
 
@@ -174,7 +191,7 @@ void copyToFile(struct Matrix *m, const char *path, int index)
     }
     fclose(file);
     free(str);
-}
+} */
 
 /* struct Matrix *copyFromFile(const char *path, int index)
 {

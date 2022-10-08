@@ -83,7 +83,7 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
             else if (dbgFlag == 1)
                 matrix[i][j] = 1;
             else if (dbgFlag == 2)
-                matrix[i][j] = rand() % 10;
+                matrix[i][j] = i * m->cols + j;
             else
                 matrix[i][j] = rand() % 2;
         }

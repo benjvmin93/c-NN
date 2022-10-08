@@ -114,14 +114,16 @@ void grayscale(SDL_Surface* image_surface){
 	Uint8 r,g,b=0;
 	Uint8 avg= 0;
 
-	for(int i=0; i<width; i++){
-		for(int j=0; j<height; j++){
-			pixel=getpixel(image_surface,i,j);
-			SDL_GetRGB(pixel, image_surface->format, &r,&g,&b);
-			avg = 0.3*r + 0.59*g + 0.11*b;
+	for(int i = 0; i<width; i++)
+    {
+		for(int j = 0; j<height; j++)
+        {
+			pixel = getpixel(image_surface, i, j);
+			SDL_GetRGB(pixel, image_surface->format, &r, &g, &b);
+			avg = 0.3 * r + 0.59 * g + 0.11 * b;
 			r = avg;
-			g=r;
-			b=r;
+			g = r;
+			b = r;
 			pixel = SDL_MapRGB(image_surface->format, r,g,b);
 			set_pixel(image_surface,i,j,pixel);
 		}

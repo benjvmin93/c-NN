@@ -1,24 +1,31 @@
 #ifndef NEURALNET_H
 #define NEURALNET_H
 
-#include <stdlib.h>
 #include "../utils/matrix.h"
+#include "filter.h"
 
-/*
-const char* labelsReference[] = { "Car",
-                                 "Cat",
-                                 "Dog" };
-*/
+#include <stdlib.h>
 
+
+struct HiddenLayer
+{
+    struct Matrix **layer;
+    double **weights;
+    double **bias;
+};
 
 struct NeuralNet
 {
-    size_t pixels;
-    float* firstLayer;
-    float** weights;
+    struct Matrix **input;
+    struct HiddenLayer *convolutionLayer;
+    struct HiddenLayer *pooled_feature;
+    int *flatLayer;
+    struct Filter **filters; 
+    // struct Matrix **second_convolution_features;
+    // struct Matrix **second_pooled_features;
 };
 
-struct NeuralNet* init(const char* file);
+struct NeuralNet* init_cnn(const char* file);
 
 void freeNeuralNet(struct NeuralNet* neuralNet);
 

@@ -20,14 +20,14 @@ struct NeuralNet
     struct HiddenLayer *convolutionLayer;
     struct HiddenLayer *pooled_feature;
     int *flatLayer;
-    struct Filter **filters; 
-    // struct Matrix **second_convolution_features;
-    // struct Matrix **second_pooled_features;
+    struct Filter *filters;
 };
 
 struct NeuralNet* init_cnn(const char* file);
+struct HiddenLayer *init_hiddenLayer(struct Matrix **layer);
 
-void freeNeuralNet(struct NeuralNet* neuralNet);
+void free_cnn(struct NeuralNet* neuralNet);
+void free_hidden_layer(struct HiddenLayer *HiddenLayer);
 
 int **pad_input(struct Matrix *m, size_t padSize);
 struct Matrix *convolution(struct Matrix *input, struct Matrix *m);

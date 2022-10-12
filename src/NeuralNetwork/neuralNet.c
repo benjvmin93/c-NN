@@ -1,6 +1,7 @@
 #include "neuralNet.h"
 #include "../utils/matrix.h"
 #include "../image-process/SDL.h"
+#include "filter.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -116,10 +117,11 @@ struct NeuralNet* init_cnn(const char* file)
         err(1, "neuralNet.init_cnn(): Couldn't allocate neuralnet.");
 
     neuralnet->input = input;
+    neuralnet->filters = init_filter(NONE);
+
     neuralnet->convolutionLayer = NULL;
     neuralnet->pooled_feature = NULL;
     neuralnet->flatLayer = NULL;
-    neuralnet->filters = NULL;
 
     return neuralnet;
 }
@@ -149,36 +151,6 @@ double *softmax_function(struct Matrix *pooled_feature)
 
     return out;
 }
-
-struct Filters *init_filters(enum ImageType imageType)
-{
-    switch (imageType)
-    {
-        case ANIMAL:
-            break;
-        case VEHICULE:
-            break;
-        case WOMAN:
-            break;
-        case MAN:
-            break;
-        case CHILD:
-            break;
-        default:
-            break;
-    }
-
-    return NULL;
-}
-
-struct Matrix *generate_filter(size_t cols, size_t lines)
-{
-    struct Matrix *filter = init_matrix(cols, lines);
-    fill_matrix(filter, -1);
-
-    return filter;
-}
-
 
 int **pad_input(struct Matrix *m, size_t padSize)
 {
@@ -348,18 +320,41 @@ void free_pixels_matrices(struct Matrix **matrices)
     free(matrices);
 }
 
+void free_hidden_layer(struct HiddenLayer *HiddenLayer)
+{
+    if (!HiddenLayer)
+        return;
+
+    struct HiddenLayer *l = HiddenLayer;
+    
+    if (!l->layer || !l->weights || !l->bias)
+        return;
+    
+    struct Matrix *m = l->layer[0];
+    for (size_t i = 0; i < m->lines; ++i)
+    {
+        free(l->weights[i]);
+        free(l->bias[i]);
+    }
+
+    free(l->weights);
+    free(l->bias);
+    free_pixels_matrices(HiddenLayer->layer);
+}
+
+
 //TODO: modify neuralNet attribute according to HiddenLayer structures contained inside.
 
-void freeNeuralNet(struct NeuralNet* neuralNet)
+void free_cnn(struct NeuralNet* neuralNet)
 {
     if (!neuralNet)
         return;
     if (neuralNet->input)
         free_pixels_matrices(neuralNet->input);
-    if (neuralNet->first_convolution_features)
-        free_pixels_matrices(neuralNet->first_convolution_features);
-    if (neuralNet->first_pooled_features)
-        free_pixels_matrices(neuralNet->first_pooled_features);
+    if (neuralNet->convolutionLayer)
+        free_hidden_layer(neuralNet->convolutionLayer);
+    if (neuralNet->pooled_feature)
+        free_hidden_layer(neuralNet->convolutionLayer);
 
     free(neuralNet);
 }

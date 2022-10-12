@@ -13,6 +13,7 @@ struct Matrix
 struct Matrix *init_matrix(size_t cols, size_t lines);
 void print_matrix(struct Matrix* m);
 void fill_matrix(struct Matrix *m, int dbgFlag);
+int isEqual(struct Matrix *m1, struct Matrix *m2);
 int *flatMatrix(struct Matrix *m);
 void clear_matrix(struct Matrix *m);
 void free_matrix(struct Matrix *m);

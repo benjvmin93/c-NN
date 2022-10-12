@@ -1,26 +1,174 @@
 #include "neuralNet.h"
 #include "../utils/matrix.h"
+#include "../image-process/SDL.h"
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
+#include <math.h>
 #include <err.h>
 #include <stdlib.h>
 
+static const enum ImageType output[5] = { ANIMAL, VEHICULE, WOMAN, MAN, CHILD };
 
-struct NeuralNet* init(const char* file)
+/*
+* Initialize pixels matrices from SDL_Surface
+* and set it inside a list of matrices.
+*/
+struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
 {
-    struct NeuralNet* neuralNet = malloc(sizeof(struct NeuralNet));
-    if (!neuralNet)
-        err(1, "Failed to allocate neuralNet structure");
-
-    FILE* f = fopen(file, "r");
-    if (!f)
-        err(1, "Failed to open %s file", file);
+    Uint8 r, g, b;
+    struct Matrix* pixels = init_matrix(copy->w, copy->h);
+    struct Matrix *redPixels = init_matrix(copy->w, copy->h);
+    struct Matrix *greenPixels = init_matrix(copy->w, copy->h);
+    struct Matrix *bluePixels = init_matrix(copy->w, copy->h);
     
-    fclose(f);
+    for (int i = 0; i < copy->w; ++i)
+    {
+        for (int j = 0; j < copy->h; ++j)
+        {
+            Uint32 pixel = getpixel(copy, i, j);
+            SDL_GetRGB(pixel, copy->format, &r, &g, &b);
+            
+            setElement(pixels, pixel, i, j);
+            setElement(redPixels, r, i, j);
+            setElement(greenPixels, g, i, j);
+            setElement(bluePixels, b, i, j);
+        }
+    }
 
-    return neuralNet;
+    struct Matrix **matrices = malloc(5 * sizeof(struct Matrix *));
+    if (!matrices)
+        err(1, "neuralNet.init_matrices_and_set_pixels(): Couldn't allocate matrices.");
+
+    matrices[4] = NULL;
+
+    matrices[0] = pixels;
+    matrices[1] = redPixels;
+    matrices[2] = greenPixels;
+    matrices[3] = bluePixels;
+
+    return matrices;
+}
+
+/*
+* Initialize an array of doubles according to He initialization formula.
+*/
+double **init_weights(size_t lines, size_t cols)
+{
+    double **weights = malloc(lines * sizeof(double *));
+    if (!weights)
+        err(1, "neuralNet.init_weights: couldn't allocate weights.");
+    
+    time_t t = time(NULL);
+    srand(t);
+
+    const double he = sqrt((double) 2 / cols);
+    for (size_t i = 0; i < lines; ++i)
+    {
+        weights[i] = malloc(cols * sizeof(double));
+        if (!weights[i])
+            err(1, "neuralNet.init_weights: couldn't allocate weights[i].");
+        for (size_t j = 0; j < cols; ++j)
+        {
+            weights[i][j] = (double) rand() / RAND_MAX * he;
+            printf("%f, ", weights[i][j]);
+        }
+    }
+
+    return weights;
+}
+
+struct HiddenLayer *init_hiddenLayer(struct Matrix **layer)
+{
+    struct HiddenLayer *HiddenLayer = malloc(sizeof(struct HiddenLayer));
+    if (!HiddenLayer)
+        err(1, "neuralNet.init_hiddenLayer(): Coudln't allocate HiddenLayer.");
+    
+    HiddenLayer->layer = layer;
+
+    for (size_t i = 0; layer[i]; ++i)
+    {
+        struct Matrix *m = layer[i];
+        HiddenLayer->weights = init_weights(m->lines, m->cols);
+    }
+
+}
+
+enum ImageType run(const char *path)
+{
+    struct NeuralNet *neuralnet = init_cnn(path);
+    struct Matrix **filters = NULL;
+
+    neuralnet->convolutionLayer = init_hiddenLayer(convolution(neuralnet->input, filters));
+
+}
+
+struct NeuralNet* init_cnn(const char* file)
+{
+    // Load image and get the pixel input matrices.
+    init_sdl();
+    SDL_Surface *img = load_image(file);
+    struct Matrix **input = init_matrices_and_set_pixels(img);
+    struct NeuralNet *neuralnet = malloc(sizeof(struct NeuralNet));
+    if (!neuralnet)
+        err(1, "neuralNet.init_cnn(): Couldn't allocate neuralnet.");
+
+    neuralnet->input = input;
+    neuralnet->convolutionLayer = NULL;
+    neuralnet->pooled_feature = NULL;
+    neuralnet->flatLayer = NULL;
+    neuralnet->filters = NULL;
+
+    return neuralnet;
+}
+
+/*
+* Apply softmax function to a Vector.
+*/
+double *softmax_function(struct Matrix *pooled_feature)
+{
+    size_t size = pooled_feature->cols * pooled_feature->lines;
+
+    // Change the 2D matrix to a 1D matrix.
+    int *flatLayer = flatMatrix(pooled_feature);
+
+    double sum = 0;
+    for (size_t i = 0; i < size; ++i)
+    {
+        sum += exp(flatLayer[i]);
+    }
+
+
+    double *out = malloc(size * sizeof(double));
+    for (size_t i = 0; i < size; ++i)
+    {
+        out[i] = exp(flatLayer[i]) / sum;
+    }
+
+    return out;
+}
+
+struct Filters *init_filters(enum ImageType imageType)
+{
+    switch (imageType)
+    {
+        case ANIMAL:
+            break;
+        case VEHICULE:
+            break;
+        case WOMAN:
+            break;
+        case MAN:
+            break;
+        case CHILD:
+            break;
+        default:
+            break;
+    }
+
+    return NULL;
 }
 
 struct Matrix *generate_filter(size_t cols, size_t lines)
@@ -30,6 +178,7 @@ struct Matrix *generate_filter(size_t cols, size_t lines)
 
     return filter;
 }
+
 
 int **pad_input(struct Matrix *m, size_t padSize)
 {
@@ -108,6 +257,11 @@ int activationFunction(struct Matrix *input, size_t i, size_t j, struct Matrix *
     return max;
 }
 
+/*
+* Pooling process.
+* Apply the max pooling method to the convolved feature.
+* Returns the pooled feature.
+*/
 struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, int stride)
 {
     size_t lines = 1; 
@@ -140,6 +294,15 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
     return pooled_feature;
 }
 
+
+
+//TODO: update *input to **input in order to get RGB matrices and scan the whole image component. 
+/*
+* Convolution process.
+* Iterate through an input matrix and apply a convolution operation with the given filter.
+* Finally apply ReLU function for each computed element of the output.
+* Returns the convolved feature.
+*/
 struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
 {
     size_t conv_cols = input->cols - 2;
@@ -175,11 +338,28 @@ struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
     return conv_matrix;
 }
 
+void free_pixels_matrices(struct Matrix **matrices)
+{
+    for(int i = 0; matrices[i]; ++i)
+    {
+        free_matrix(matrices[i]);
+    }
+
+    free(matrices);
+}
+
+//TODO: modify neuralNet attribute according to HiddenLayer structures contained inside.
+
 void freeNeuralNet(struct NeuralNet* neuralNet)
 {
     if (!neuralNet)
         return;
+    if (neuralNet->input)
+        free_pixels_matrices(neuralNet->input);
+    if (neuralNet->first_convolution_features)
+        free_pixels_matrices(neuralNet->first_convolution_features);
+    if (neuralNet->first_pooled_features)
+        free_pixels_matrices(neuralNet->first_pooled_features);
 
-    free(neuralNet->firstLayer);
     free(neuralNet);
 }

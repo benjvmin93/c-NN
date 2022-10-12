@@ -14,4 +14,6 @@ void filterImage(SDL_Surface *surface);
 Uint32 getpixel(SDL_Surface *surface, int x, int y);
 void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel);
 
+SDL_Surface *init_and_copy_img(const char *path);
+
 #endif

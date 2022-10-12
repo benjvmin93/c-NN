@@ -129,3 +129,12 @@ void grayscale(SDL_Surface* image_surface){
 		}
 	}
 }
+
+SDL_Surface *init_and_copy_img(const char *path)
+{
+    init_sdl();
+    SDL_Surface *img = load_image(path);
+    SDL_Surface *copy = SPG_CopySurface(img);
+    SDL_FreeSurface(img);
+    return copy;
+}

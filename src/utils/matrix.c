@@ -121,6 +121,7 @@ void free_matrix(struct Matrix *m)
     free(m->matrix);
     free(m);
 }
+
 int getElement(struct Matrix *m, int i, int j)
 {
     if (!m)
@@ -136,6 +137,45 @@ void setElement(struct Matrix *m, int element, int i, int j)
     if (!m->matrix)
         return;
     m->matrix[i][j] = element;
+}
+
+int isEqual(struct Matrix *m1, struct Matrix *m2)
+{
+    if (m1->cols != m2->cols || m1->lines != m2->lines)
+        return 0;
+    for (size_t i = 0; i < m1->lines; ++i)
+    {
+        for (size_t j = 0; j < m1->cols; ++j)
+        {
+            if (m1->matrix[i][j] != m2->matrix[i][j])
+                return 0;
+        }
+    }
+    return 1;
+}
+
+int *flatMatrices(struct Matrix **matrices)
+{
+    size_t size = 0;
+    for (size_t i = 0; matrices[i]; ++i)
+    {
+        size += matrices[i]->cols * matrices[i]->lines;
+    }
+
+    int *flat = malloc(size * sizeof(int));
+    if (!flat)
+        err(1, "matrix.flatMatrices(): Couldn't allocate flat.");
+    
+    size_t offset = 0;
+    for (size_t i = 0; matrices[i]; ++i)
+    {
+        struct Matrix *m = matrices[i];
+        int *ptr = flat + offset;
+        ptr = flatMatrix(m);
+        offset += m->cols * m->lines;
+    }
+
+    return flat;
 }
 
 int *flatMatrix(struct Matrix *m)

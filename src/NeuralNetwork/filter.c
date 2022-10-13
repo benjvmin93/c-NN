@@ -28,7 +28,7 @@ struct Filter *init_filter(enum ImageType imageType)
 
     filters->nbFilters = 6;
 
-    filters->filters = malloc(filters->nbFilters * sizeof(struct Matrix));
+    filters->filters = malloc(filters->nbFilters * sizeof(struct Matrix *));
     if (!filters->filters)
         err(1, "filter.init_filter(): Couldn't allocate filters->filters.");
     
@@ -36,8 +36,20 @@ struct Filter *init_filter(enum ImageType imageType)
     {
         filters->filters[i] = init_matrix(3, 3);
         fill_matrix(filters->filters[i], -1);
-        print_matrix(filters->filters[i]);
     }
 
     return filters;
+}
+
+void free_filter(struct Filter *filter)
+{
+    if (!filter)
+        return;
+
+    if (filter->nbFilters == 0 && !filter->filters)
+        return;
+    for (size_t i = 0; i < filter->nbFilters; ++i)
+        free_matrix(filter->filters[i]);
+    free(filter->filters);
+    free(filter);
 }

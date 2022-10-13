@@ -21,5 +21,6 @@ struct Filter
 };
 
 struct Filter *init_filter(enum ImageType imageType);
+void free_filter(struct Filter *filter);
 
 #endif

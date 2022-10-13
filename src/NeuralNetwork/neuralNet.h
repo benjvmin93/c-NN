@@ -29,8 +29,8 @@ struct HiddenLayer *init_hiddenLayer(struct Matrix **layer);
 void free_cnn(struct NeuralNet* neuralNet);
 void free_hidden_layer(struct HiddenLayer *HiddenLayer);
 
-int **pad_input(struct Matrix *m, size_t padSize);
-struct Matrix *convolution(struct Matrix *input, struct Matrix *m);
+struct Matrix *pad_input(struct Matrix *m, size_t padSize);
+struct Matrix *convolution(struct Matrix *in, struct Matrix *m);
 struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, int stride);
 struct Matrix *generate_filter(size_t cols, size_t lines);
 

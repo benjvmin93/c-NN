@@ -95,15 +95,45 @@ struct HiddenLayer *init_hiddenLayer(struct Matrix **layer)
         HiddenLayer->weights = init_weights(m->lines, m->cols);
     }
 
+    return HiddenLayer;
 }
 
 enum ImageType run(const char *path)
 {
     struct NeuralNet *neuralnet = init_cnn(path);
-    struct Matrix **filters = NULL;
+    struct Filter *filters = neuralnet->filters;
 
-    neuralnet->convolutionLayer = init_hiddenLayer(convolution(neuralnet->input, filters));
+    printf("Filters generated:\n");
+    for (size_t i = 0; i < filters->nbFilters; ++i)
+        print_matrix(filters->filters[i]);
 
+    // Allocate enough space for our convolved features (4 input images * nbFilters)
+    size_t nb_convolved_features = (4 * filters->nbFilters) + 1;
+    struct Matrix **convolved_features = malloc(nb_convolved_features * sizeof(struct Matrix));
+    if (!convolved_features)
+        err(1, "neuralNet.run(): Coudln't allocate convolved_features.");
+
+    convolved_features[nb_convolved_features - 1] = NULL;
+
+    size_t i = 0;
+    // Convolution process
+    printf("Starting convolution process");
+    while (i < nb_convolved_features)
+    {
+        convolved_features[i] = NULL;
+        size_t f = 0;
+        while (f < filters->nbFilters)
+        {
+            printf(".");
+            struct Matrix *padded = pad_input(neuralnet->input[i], 2);
+            convolved_features[i] = convolution(padded, filters->filters[f]);
+            free_matrix(padded);
+            f++;
+            i++;
+        }
+    }
+
+    return output[0];
 }
 
 struct NeuralNet* init_cnn(const char* file)
@@ -152,39 +182,23 @@ double *softmax_function(struct Matrix *pooled_feature)
     return out;
 }
 
-int **pad_input(struct Matrix *m, size_t padSize)
+struct Matrix *pad_input(struct Matrix *m, size_t padSize)
 {
     int **input = m->matrix;
 
     size_t cols_pad = m->cols + 2 * padSize;
     size_t lines_pad = m->lines + 2 * padSize;
 
-    int **padded_input = malloc(lines_pad * sizeof(int *));
-    if (!padded_input)
-        err(1, "neuralNet.pad_input: Couldn't allocate `padded_input`.");
-
-    for (size_t i = 0; i < lines_pad; ++i)
-    {
-        padded_input[i] = malloc(cols_pad * sizeof(int));
-        if (!padded_input[i])
-            err(1, "neuralNet.pad_input: Couldn't allocate `padded_input[i]`.");
-        for (size_t j = 0; j < cols_pad; ++j)
-        {
-            padded_input[i][j] = 0;
-        }
-    }
-
+    struct Matrix *padded_input = init_matrix(cols_pad, lines_pad);
+    
     /* Fill center. */
     for (size_t i = padSize; i < lines_pad - padSize; ++i)
     {
         for (size_t j = padSize; j < cols_pad - padSize; ++j)
-        { 
-            padded_input[i][j] = input[i - padSize][j - padSize];
-        }
+            setElement(padded_input,
+                input[i - padSize][j - padSize], i, j);
     }
 
-    m->cols = cols_pad;
-    m->lines = lines_pad;
     return padded_input;
 }
 
@@ -268,7 +282,6 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
 
 
 
-//TODO: update *input to **input in order to get RGB matrices and scan the whole image component. 
 /*
 * Convolution process.
 * Iterate through an input matrix and apply a convolution operation with the given filter.

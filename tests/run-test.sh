@@ -11,6 +11,7 @@ UBlack='\033[4;30m'
 
 CC=gcc
 CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -fsanitize=address"
+
 MATRIX_FILES="src/utils/matrix.c"
 NN_FILES="src/NeuralNetwork/neuralNet.c src/image-process/SDL.c src/NeuralNetwork/filter.c"
 
@@ -19,7 +20,6 @@ TESTS_SUCCEED=0
 TESTS_FAILED=0
 
 run_all_tests() {
-    echo 'RUNNING ALL TESTS.';
     run_test matrix
     run_test neuralnet
 }
@@ -51,12 +51,7 @@ run_test() {
         fi;
 
         printf "Running ./tests/${file}\n\n"
-
-        if [ "$DEBUG" == "1" ]; then 
-            ./tests/$file 1
-        else
-            ./tests/$file
-        fi
+        ./tests/$file
         
         if [ "$?" -eq 0 ]; then
             printf "tests/$1/$file: ${CYAN}Succeed${NC}\n\n"

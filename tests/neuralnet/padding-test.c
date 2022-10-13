@@ -22,33 +22,33 @@ int main(void)
 
     for (padSize = 1; padSize < 5; ++padSize) 
     {
-        for (size_t i = 1; i < 15; ++i)
+        for (size_t i = 1; i < 10; ++i)
         {
-            for (size_t j = 1; j < 15; ++j)
+            for (size_t j = 1; j < 10; ++j)
             {
                 cols = i;
                 lines = j;
                 
                 struct Matrix *matrix = init_matrix(cols, lines); 
                 fill_matrix(matrix, 0);
-                int **padded_input = pad_input(matrix, padSize);
+                struct Matrix *padded_input = pad_input(matrix, padSize);
 
-                if (matrix->cols != (cols + (2 * padSize)) || matrix->lines != (lines + (2 * padSize)))
+                if (padded_input->cols != (cols + (2 * padSize)) || padded_input->lines != (lines + (2 * padSize)))
                 {
                     printf("Error padSize %ld.\n", padSize);
                     printf("Initial matrix:\n");
                     print_matrix(matrix);
 
-                    matrix->matrix = padded_input;
                     printf("\nPadded matrix:\n");
-                    print_matrix(matrix);
+                    print_matrix(padded_input);
                     printf("\n\n");
 
                     exit(1);
                 }
 
-                free_ptr(matrix->matrix, lines);
-                matrix->matrix = padded_input;
+                // free_ptr(matrix->matrix, lines);
+
+                free_matrix(padded_input);
                 free_matrix(matrix);
             }
         }

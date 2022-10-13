@@ -72,12 +72,12 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
         return;
     
     time_t t = time(NULL);
+    srand(t);
     int **matrix = m->matrix;
     for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            srand(t);
             if (dbgFlag == 0)
                 matrix[i][j] = 0;
             else if (dbgFlag == 1)
@@ -86,11 +86,6 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
                 matrix[i][j] = i * m->cols + j;
             else
                 matrix[i][j] = rand() % 2;
-            while (t == time(NULL))
-            {
-                continue;
-            }
-            t = time(NULL);
         }
     }
 }
@@ -172,10 +167,11 @@ int *flatMatrices(struct Matrix **matrices)
         err(1, "matrix.flatMatrices(): Couldn't allocate flat.");
     
     size_t offset = 0;
+    int *ptr = flat;
     for (size_t i = 0; matrices[i]; ++i)
     {
         struct Matrix *m = matrices[i];
-        int *ptr = flat + offset;
+        ptr += offset;
         ptr = flatMatrix(m);
         offset += m->cols * m->lines;
     }

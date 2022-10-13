@@ -6,9 +6,9 @@
 
 void filter_null()
 {
-    for (size_t k = 3; k < 50; ++k)
+    for (size_t k = 3; k < 5; ++k)
     {
-        for (size_t l = 3; l < 50; ++l)
+        for (size_t l = 3; l < 5; ++l)
         {
             struct Matrix *input = init_matrix(k, l);
             fill_matrix(input, 1);
@@ -91,9 +91,9 @@ int main(void)
     // filter_null();
     // filter_one();
 
-    for (size_t i = 3; i < 50; ++i)
+    for (size_t i = 3; i < 6; ++i)
     {
-        for (size_t j = 3; j < 50; ++j)
+        for (size_t j = 3; j < 6; ++j)
         {
             struct Matrix *input = init_matrix(i, j);
             struct Matrix *filter = init_matrix(3, 3);

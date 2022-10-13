@@ -12,7 +12,7 @@ UBlack='\033[4;30m'
 CC=gcc
 CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -fsanitize=address"
 MATRIX_FILES="src/utils/matrix.c"
-NN_FILES="src/NeuralNetwork/neuralNet.c"
+NN_FILES="src/NeuralNetwork/neuralNet.c src/image-process/SDL.c src/NeuralNetwork/filter.c"
 
 TESTS_DONE=0
 TESTS_SUCCEED=0
@@ -29,15 +29,28 @@ run_test() {
 
     for file in `ls tests/$1`; do
         if [ "$1" = "matrix" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o tests/$file
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o tests/$file >tests/compilation.log 2>&1
+
         elif [ $1 = "neuralnet" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -o tests/$file
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -lSDL2 -lSDL2_image -o tests/$file -lm >tests/compilation.log 2>&1
         else
             echo "Bad arg: $1"
             exit 1
         fi
+        COMPILE=$?
 
         printf "######################################\n\n"
+
+        if [ "$COMPILE" -eq 1 ]; then
+            printf "Compilation failed: ./tests/${file}\n\n"
+            printf "tests/$1/$file: ${RED}Failed${NC}:\n"
+            cat tests/compilation.log
+            echo
+            TESTS_FAILED=$(($TESTS_FAILED + 1))
+            continue;
+        fi;
+
+        printf "Running ./tests/${file}\n\n"
 
         if [ "$DEBUG" == "1" ]; then 
             ./tests/$file 1

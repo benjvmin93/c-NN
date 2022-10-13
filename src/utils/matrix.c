@@ -71,8 +71,6 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
     if (!m->matrix)
         return;
     
-    time_t t = time(NULL);
-    srand(t);
     int **matrix = m->matrix;
     for (size_t i = 0; i < m->lines; ++i)
     {

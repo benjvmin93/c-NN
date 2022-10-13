@@ -1,4 +1,5 @@
 #include "../../src/NeuralNetwork/neuralNet.h"
+#include "../../src/NeuralNetwork/filter.h"
 #include "../../src/utils/matrix.h"
 
 #include <stdio.h>
@@ -6,8 +7,7 @@
 
 int main(void)
 {
-    struct Matrix *filter = generate_filter(3, 3);
-    fill_matrix(filter, -1);
+    struct Filter *filter = init_filter(NONE);
 
     for (size_t i = 3; i < 50; ++i)
     {
@@ -24,16 +24,15 @@ int main(void)
             // print_matrix(filter);
             // printf("\n");
 
-            struct Matrix *pooled_feature = pooling(m, filter, 1);
+            struct Matrix *pooled_feature = pooling(m, filter->filters[0], 1);
             // print_matrix(pooled_feature);
 
             free_matrix(m);
             free_matrix(pooled_feature);
-
         }
     }
 
-    free_matrix(filter);
+    free_filter(filter);
 
     return 0;
 }

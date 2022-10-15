@@ -61,6 +61,7 @@ void free_inside_matrix(struct Matrix *m)
         free(m->matrix[i]);
     }
     free(m->matrix);
+    m->matrix = NULL;
 }
 
 
@@ -152,51 +153,44 @@ int isEqual(struct Matrix *m1, struct Matrix *m2)
     return 1;
 }
 
-int *flatMatrices(struct Matrix **matrices)
+double *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
 {
     size_t size = 0;
-    for (size_t i = 0; matrices[i]; ++i)
+    for (size_t i = 0; i < nbMatrices; ++i)
     {
         size += matrices[i]->cols * matrices[i]->lines;
     }
 
-    int *flat = malloc(size * sizeof(int));
+    double *flat = calloc(size, sizeof(double));
     if (!flat)
         err(1, "matrix.flatMatrices(): Couldn't allocate flat.");
     
     size_t offset = 0;
-    int *ptr = flat;
-    for (size_t i = 0; matrices[i]; ++i)
+    for (size_t i = 0; i < nbMatrices; ++i)
     {
         struct Matrix *m = matrices[i];
-        ptr += offset;
-        ptr = flatMatrix(m);
+        flatMatrix(m, flat + offset);
         offset += m->cols * m->lines;
     }
 
     return flat;
 }
 
-int *flatMatrix(struct Matrix *m)
+double *flatMatrix(struct Matrix *m, double *ptr)
 {
     if (!m)
         return NULL;
     if (!m->matrix)
         return NULL;
 
-    int **matrix = m->matrix;
-    int *mat = malloc((m->cols * m->lines) * sizeof(int));
-    if (!mat)
-        return NULL;
-
     for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            mat[i * m->cols + j] = matrix[i][j];
+            ptr[i * m->cols + j] = (double) m->matrix[i][j];
         }
     }
-    return mat;
+    return ptr;
 }
 
 /* void copyToFile(struct Matrix *m, const char *path, int index)

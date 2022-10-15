@@ -4,6 +4,8 @@
 #include <err.h>
 #include <time.h>
 
+#define NB_FILTERS 3
+
 struct Filter *init_filter(enum ImageType imageType)
 {
     struct Filter *filters = malloc(sizeof(struct Filter));
@@ -26,7 +28,7 @@ struct Filter *init_filter(enum ImageType imageType)
             break;
     }
 
-    filters->nbFilters = 6;
+    filters->nbFilters = NB_FILTERS;
 
     filters->filters = malloc(filters->nbFilters * sizeof(struct Matrix *));
     if (!filters->filters)

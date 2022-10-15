@@ -10,7 +10,6 @@
 
 void init_sdl()
 {
-
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) == -1)
         errx(1, "Could not initialize SDL: %s.\n", SDL_GetError());
 }
@@ -22,7 +21,7 @@ SDL_Surface *load_image(const char *path)
 
     SDL_Surface *img = IMG_Load(path);
     if (!img)
-        errx(3, "Can't load %s: %s", path, IMG_GetError());
+        errx(3, "%s", IMG_GetError());
     
     return img;
 }
@@ -58,7 +57,6 @@ void display_image(SDL_Surface *img)
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     IMG_Quit();
-    SDL_Quit();
 }
 
 Uint32 getpixel(SDL_Surface *surface, int x, int y)
@@ -102,6 +100,22 @@ void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
     *target_pixel = pixel;
 }
 
+SDL_Surface *pixels_to_surface(struct Matrix *pixelMatrix)
+{
+
+    struct SDL_Surface *surface = SDL_CreateRGBSurface(0, pixelMatrix->lines, pixelMatrix->cols, 32, 0, 0, 0, 0);
+
+    for (size_t i = 0; i < pixelMatrix->lines; ++i)
+    {
+        for (size_t j = 0; j < pixelMatrix->cols; ++j)
+        {
+            set_pixel(surface, i, j, pixelMatrix->matrix[i][j]);
+        }
+    }
+
+    return surface;
+}
+
 SDL_Surface* SPG_CopySurface(SDL_Surface* src)
 {
     return SDL_ConvertSurface(src, SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888), SDL_SWSURFACE);
@@ -114,20 +128,23 @@ void grayscale(SDL_Surface* image_surface){
 	Uint8 r,g,b=0;
 	Uint8 avg= 0;
 
-	for(int i = 0; i<width; i++)
+	for(int i = 0; i<height; i++)
     {
-		for(int j = 0; j<height; j++)
+		for(int j = 0; j<width; j++)
         {
-			pixel = getpixel(image_surface, i, j);
+			pixel = getpixel(image_surface, j, i);
 			SDL_GetRGB(pixel, image_surface->format, &r, &g, &b);
 			avg = 0.3 * r + 0.59 * g + 0.11 * b;
 			r = avg;
 			g = r;
 			b = r;
 			pixel = SDL_MapRGB(image_surface->format, r,g,b);
-			set_pixel(image_surface,i,j,pixel);
+			set_pixel(image_surface,j, i, pixel);
 		}
 	}
+    printf("Grayscale successfully applied to image !\n");
+    display_image(image_surface);
+
 }
 
 SDL_Surface *init_and_copy_img(const char *path)

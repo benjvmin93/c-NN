@@ -149,6 +149,7 @@ struct NeuralNet* init_cnn(const char* file)
     init_sdl();
     SDL_Surface *img = load_image(file);
     grayscale(img);
+    display_image(img);
     struct Matrix **input = init_matrices_and_set_pixels(img);
     SDL_FreeSurface(img);
     struct NeuralNet *neuralnet = malloc(sizeof(struct NeuralNet));
@@ -389,7 +390,6 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
     size_t c = 0;
     
     // Convolution process
-    printf("Starting convolution process");
     while (i < SIZE_INPUTS)
     {
         convolved_features[c] = NULL;
@@ -402,13 +402,15 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
             struct Matrix *padded = pad_input(neuralnet->input[i], 2);
 
             convolved_features[c++] = convolution(padded, filters->filters[f]);
+            SDL_Surface *surf = pixels_to_surface(convolved_features[c - 1]);
+            display_image(surf);
+            SDL_FreeSurface(surf);
             free_matrix(padded);
             f++;
         }
         i++;
     }
 
-    printf("\nConvolution process ended\n\n");
     return init_hiddenLayer(convolved_features, nb_convolved_features, 0);
 }
 
@@ -419,14 +421,17 @@ struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
     if (!pooled_features)
         err(1, "neuralNet.run(): Couldn't allocate pooled_features");
     size_t i = 0;
-    printf("Starting pooling process");
     while (i < nb_pooled_features)
     {
         pooled_features[i] = NULL;
         printf(".");
         pooled_features[i] = pooling(neuralnet->convolutionLayer->layers[i], neuralnet->filters->filters[0], 2);
+        SDL_Surface *surf = pixels_to_surface(pooled_features[i]);
+        display_image(surf);
+        SDL_FreeSurface(surf);
         i++;
     }
+
 
     return init_hiddenLayer(pooled_features, nb_pooled_features, 0);
 }
@@ -454,9 +459,13 @@ enum ImageType run(const char *path)
 {
     struct NeuralNet *neuralnet = init_cnn(path);
 
+    printf("Starting convolution process ");
     neuralnet->convolutionLayer = run_convolution(neuralnet);
+    printf("\nConvolution process ended\n\n");
 
+    printf("Starting pooling process ");
     neuralnet->pooled_feature = run_pooling(neuralnet);
+    printf("Pooling process ended.\n\n");
 
     neuralnet->fullyConnected = run_flatting(neuralnet);
 

@@ -1,4 +1,5 @@
 #include "SDL.h"
+#include "../utils/xmalloc.h"
 
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
@@ -28,7 +29,7 @@ SDL_Surface *load_image(const char *path)
 
 void display_image(SDL_Surface *img)
 {
-    SDL_Window* window = SDL_CreateWindow("First program", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, SDL_WINDOW_OPENGL);
+    SDL_Window* window = SDL_CreateWindow("First program", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, img->w + 500, img->h + 500, SDL_WINDOW_OPENGL);
     if (window == NULL) 
 	    errx(3, "Error window creation");
 	
@@ -103,13 +104,13 @@ void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel)
 SDL_Surface *pixels_to_surface(struct Matrix *pixelMatrix)
 {
 
-    struct SDL_Surface *surface = SDL_CreateRGBSurface(0, pixelMatrix->lines, pixelMatrix->cols, 32, 0, 0, 0, 0);
+    struct SDL_Surface *surface = SDL_CreateRGBSurface(0, pixelMatrix->cols, pixelMatrix->lines, 32, 0, 0, 0, 0);
 
     for (size_t i = 0; i < pixelMatrix->lines; ++i)
     {
         for (size_t j = 0; j < pixelMatrix->cols; ++j)
         {
-            set_pixel(surface, i, j, pixelMatrix->matrix[i][j]);
+            set_pixel(surface, j, i, (Uint32) pixelMatrix->matrix[i][j]);
         }
     }
 
@@ -119,6 +120,31 @@ SDL_Surface *pixels_to_surface(struct Matrix *pixelMatrix)
 SDL_Surface* SPG_CopySurface(SDL_Surface* src)
 {
     return SDL_ConvertSurface(src, SDL_AllocFormat(SDL_PIXELFORMAT_RGBA8888), SDL_SWSURFACE);
+}
+
+float **image_to_grayscale_matrix(SDL_Surface *image_surface)
+{
+    int width = image_surface->w;
+	int height = image_surface->h;
+    Uint32 pixel;
+	Uint8 r,g,b = 0;
+	float avg = 0;
+
+    float **grayscaled = xmalloc(height, sizeof(float*));
+
+    for (int i = 0; i < height; ++i)
+    {
+        grayscaled[i] = xmalloc(width, sizeof(float));
+        for (int j = 0; j < width; ++j)
+        {
+            pixel = getpixel(image_surface, j, i);
+            SDL_GetRGB(pixel, image_surface->format, &r, &g, &b);
+            avg = 0.3 * r + 0.59 * g + 0.11 * b;
+            grayscaled[i][j] = avg / 255;
+        }
+    }
+
+    return grayscaled;
 }
 
 void grayscale(SDL_Surface* image_surface){
@@ -136,15 +162,15 @@ void grayscale(SDL_Surface* image_surface){
 			SDL_GetRGB(pixel, image_surface->format, &r, &g, &b);
 			avg = 0.3 * r + 0.59 * g + 0.11 * b;
 			r = avg;
+            // printf("avg: %d\n", avg);
 			g = r;
 			b = r;
 			pixel = SDL_MapRGB(image_surface->format, r,g,b);
+            // printf("pixel: %d\n", pixel);
 			set_pixel(image_surface,j, i, pixel);
 		}
 	}
     printf("Grayscale successfully applied to image !\n");
-    display_image(image_surface);
-
 }
 
 SDL_Surface *init_and_copy_img(const char *path)

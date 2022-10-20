@@ -17,5 +17,6 @@ Uint32 getpixel(SDL_Surface *surface, int x, int y);
 void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel);
 SDL_Surface *pixels_to_surface(struct Matrix *pixelMatrix);
 SDL_Surface *init_and_copy_img(const char *path);
+float **image_to_grayscale_matrix(SDL_Surface *image_surface);
 
 #endif

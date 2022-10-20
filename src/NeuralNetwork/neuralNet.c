@@ -1,5 +1,8 @@
+#define _DEFAULT_SOURCE
+
 #include "neuralNet.h"
 #include "../utils/matrix.h"
+#include "../utils/xmalloc.h"
 #include "../image-process/SDL.h"
 #include "filter.h"
 
@@ -13,13 +16,18 @@
 #include <math.h>
 #include <err.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 #define SIZE_INPUTS 1
 #define SIZE_OUTPUTS 5
 
+#define MAX(X,Y) (X < Y) ? Y : X
+#define MIN(X, Y) (X < Y) ? X : Y
+
 /*
 * Initialize pixels matrices from SDL_Surface
 * and set it inside a list of matrices.
+* Currently only initialize a matrix containing the raw pixel values without differencing rgb pixels.
 */
 struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
 {
@@ -29,28 +37,24 @@ struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
     struct Matrix *greenPixels = init_matrix(copy->w, copy->h);
     struct Matrix *bluePixels = init_matrix(copy->w, copy->h); */
     
-    for (int i = 0; i < copy->w; ++i)
+    for (int i = 0; i < copy->h; ++i)
     {
-        for (int j = 0; j < copy->h; ++j)
+        for (int j = 0; j < copy->w; ++j)
         {
-            Uint32 pixel = getpixel(copy, i, j);
+            Uint32 pixel = getpixel(copy, j, i);
             SDL_GetRGB(pixel, copy->format, &r, &g, &b);
             
-            setElement(pixels, pixel, i, j);
+            // printf("%d\n", pixel);
+            setElement(pixels, (float) pixel, i, j);
             // setElement(redPixels, r, i, j);
             // setElement(greenPixels, g, i, j);
             // setElement(bluePixels, b, i, j);
         }
     } 
 
-    struct Matrix **matrices = malloc(SIZE_INPUTS * sizeof(struct Matrix *));
-    if (!matrices)
-        err(1, "neuralNet.init_matrices_and_set_pixels(): Couldn't allocate matrices.");
+    struct Matrix **matrices = xmalloc(SIZE_INPUTS, sizeof(struct Matrix *));
 
     matrices[0] = pixels;
-    // matrices[1] = redPixels;
-    // matrices[2] = greenPixels;
-    // matrices[3] = bluePixels;
 
     return matrices;
 }
@@ -60,81 +64,59 @@ struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
 */
 struct Weights *init_weights(size_t lines, size_t cols)
 {
-    struct Weights *weights = malloc(sizeof(struct Weights));
-    if (!weights)
-        err(1, "neuralNet.init_weights: couldn't allocate weights.");
+    struct Weights *weights = xmalloc(1, sizeof(struct Weights));
     weights->cols = cols;
     weights->lines = lines;
-    weights->matrix = malloc(lines * sizeof(float *));
-    if (!weights->matrix)
-        err(1, "Couldn't allocate weights->matrix.");
+    weights->matrix = xmalloc(lines, sizeof(float *));
+    
+    struct timeval tm;
+    gettimeofday(&tm, NULL);
+    srandom(tm.tv_sec + tm.tv_usec * 1000000ul);
 
-    time_t t = time(NULL);
-    srand(t);
-
-    const double he = sqrt((double) 2 / cols * lines);
+    // const double he = sqrt((double) 2 / cols * lines);
     for (size_t i = 0; i < lines; ++i)
     {
-        weights->matrix[i] = malloc(cols * sizeof(double));
-        if (!weights->matrix[i])
-            err(1, "neuralNet.init_weights: couldn't allocate weights[i].");
+        weights->matrix[i] = xmalloc(cols, sizeof(float));
         for (size_t j = 0; j < cols; ++j)
         {
-            weights->matrix[i][j] = (double) rand() / RAND_MAX * he;
+            float rand;
+            while ((rand = (double) random() / RAND_MAX) == 0)
+                continue;
+            weights->matrix[i][j] = rand;
         }
     }
 
     return weights;
 }
 
-struct HiddenLayer *init_hiddenLayer(struct Matrix **layers, size_t nbLayers, int initWeights)
+struct HiddenLayer *init_hiddenLayer(struct Matrix **layers, size_t nbLayers)
 {
-    struct HiddenLayer *HiddenLayer = malloc(sizeof(struct HiddenLayer));
-    if (!HiddenLayer)
-        err(1, "neuralNet.init_hiddenLayer(): Coudln't allocate HiddenLayer.");
-    
-    HiddenLayer->bias = NULL;
-    HiddenLayer->weights = NULL;
+    struct HiddenLayer *HiddenLayer = xmalloc(1, sizeof(struct HiddenLayer));
     HiddenLayer->nbLayers = nbLayers;
     HiddenLayer->layers = layers;
-    if (initWeights == 1)
-    {
-        HiddenLayer->weights = malloc(HiddenLayer->nbLayers * sizeof(struct Weights*));
-        if (!HiddenLayer->weights)
-            err(1, "neuralNet.init_hiddenLayer(): Coudln't allocate HiddenLayer->weights.");
-        HiddenLayer->bias = malloc(HiddenLayer->nbLayers * sizeof(struct Weights*));
-        if (!HiddenLayer->bias)
-            err(1, "neuralNet.init_hiddenLayer(): Coudln't allocate HiddenLayer->bias.");
-
-        for (size_t i = 0; i < nbLayers; ++i)
-        {
-            HiddenLayer->weights[i] = init_weights(layers[i]->lines, layers[i]->cols);
-            HiddenLayer->bias[i] = init_weights(layers[i]->lines, 1);
-        }
-    }
 
     return HiddenLayer;
 }
 
-struct HiddenLayer *apply_weights(struct HiddenLayer *pooled_feature)
+float *apply_weights(struct FullyConnected *fullyConnected)
 {
-    for (size_t l = 0; l < pooled_feature->nbLayers; ++l)
-    {
-        struct Matrix *layer = pooled_feature->layers[l];
-        struct Weights *weights = pooled_feature->weights[l];
-        struct Weights *bias = pooled_feature->bias[l];
+    float *out = xmalloc(SIZE_OUTPUTS, sizeof(float));
+    float *flat = fullyConnected->flatLayer;
+    struct Weights *weights = fullyConnected->weights;
+    struct Weights *bias = fullyConnected->biases;
 
-        for (size_t i = 0; i < layer->lines; ++i)
+    for (size_t o = 0; o < SIZE_OUTPUTS; ++o)
+    {
+        out[o] = 0;
+        for (size_t l = 0; l < fullyConnected->flatSize; ++l)
         {
-            for (size_t j = 0; j < layer->cols; ++j)
-            {
-                double value = layer->matrix[i][j] * weights->matrix[i][j] + bias->matrix[i][0];
-                setElement(layer, value, i, j);
-            }
+            out[o] += (flat[l] * weights->matrix[l][o]) + bias->matrix[l][0];
+            // printf("apply weights: flat: %f, weights: %f, bias: %f\n", flat[l], weights->matrix[l][o], bias->matrix[l][0]);
         }
+        printf("out: %f\n", out[o]);
     }
 
-    return pooled_feature;
+    return out;
 }
 
 void train(const char *dataPath)
@@ -152,12 +134,15 @@ struct NeuralNet* init_cnn(const char* file)
     display_image(img);
     struct Matrix **input = init_matrices_and_set_pixels(img);
     SDL_FreeSurface(img);
-    struct NeuralNet *neuralnet = malloc(sizeof(struct NeuralNet));
-    if (!neuralnet)
-        err(1, "neuralNet.init_cnn(): Couldn't allocate neuralnet.");
-
+    struct NeuralNet *neuralnet = xmalloc(1, sizeof(struct NeuralNet));
     neuralnet->input = input;
     neuralnet->filters = init_filter(NONE);
+
+    for (size_t i = 0; i < neuralnet->filters->nbFilters; ++i)
+    {
+        print_matrix(neuralnet->filters->filters[i]);
+        printf("\n\n");
+    }
 
     neuralnet->convolutionLayer = NULL;
     neuralnet->pooled_feature = NULL;
@@ -168,7 +153,7 @@ struct NeuralNet* init_cnn(const char* file)
 
 struct Matrix *pad_input(struct Matrix *m, size_t padSize)
 {
-    int **input = m->matrix;
+    float **input = m->matrix;
 
     size_t cols_pad = m->cols + 2 * padSize;
     size_t lines_pad = m->lines + 2 * padSize;
@@ -186,7 +171,7 @@ struct Matrix *pad_input(struct Matrix *m, size_t padSize)
     return padded_input;
 }
 
-int Max(int a, int b)
+float Max(float a, float b)
 {
     return a > b ? a : b;
 }
@@ -194,7 +179,7 @@ int Max(int a, int b)
 int dotProduct(struct Matrix *input, size_t i, size_t j, struct Matrix *filter)
 {
     int sum = 0;
-    int **matrix = input->matrix;
+    float **matrix = input->matrix;
 
     for (; i < filter->cols; ++i)
     {
@@ -209,10 +194,10 @@ int dotProduct(struct Matrix *input, size_t i, size_t j, struct Matrix *filter)
     return sum;
 }
 
-int MaxPooling(struct Matrix *input, size_t i, size_t j, struct Matrix *filter)
+float MaxPooling(struct Matrix *input, size_t i, size_t j, struct Matrix *filter)
 {
-    int max = 0;
-    int **mat = input->matrix;
+    float max = 0;
+    float **mat = input->matrix;
     
     for (size_t k = i; k < i + filter->lines; ++k)
     {
@@ -236,19 +221,23 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
     size_t tmp_cols = 0;
     size_t cols = 1;
 
-    int **m = NULL;
+    float **m = NULL;
     for (size_t i = 0; i + filter->lines - 1 < convolved_feature->lines; ++i, ++lines)
     {
-        m = realloc(m, lines * sizeof(int *));
+        m = realloc(m, lines * sizeof(float *));
         if (!m)
             err(1, "neuralNet.pooling: Couldn't allocate m");
         m[lines - 1] = NULL;
         for (size_t j = 0; j + filter->cols - 1 < convolved_feature->cols; j += stride, ++cols)
         {
-            m[lines - 1] = realloc(m[lines - 1], cols * sizeof(int));
+            m[lines - 1] = realloc(m[lines - 1], cols * sizeof(float));
             if (!m[lines - 1])
                 err(1, "neuralNet.pooling: Couldn't allocate m[i]");
             m[lines - 1][cols - 1] = MaxPooling(convolved_feature, i, j, filter);
+            float output = m[lines - 1][cols - 1];
+            if (i < 1 && j < 10)
+                printf("\noutput pool: %f\n", output);                    
+                    
         }
         if (tmp_cols == 0)
             tmp_cols = cols - 1;
@@ -258,6 +247,8 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
     struct Matrix *pooled_feature = init_matrix(tmp_cols, lines - 1);
     free_inside_matrix(pooled_feature);
     pooled_feature->matrix = m;
+
+    free_matrix(filter);
 
     return pooled_feature;
 }
@@ -280,20 +271,25 @@ struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
     size_t cols = 0;
     size_t lines = 0;
 
-    for (size_t i = 0; i + filter->lines - 1 < input->lines; ++i)
+    float sum = 0;
+    
+
+    for (size_t i = 0; i + filter->lines < input->lines; ++i)
     {
-        for (size_t j = 0; j + filter->cols - 1 < input->cols; ++j)
+        for (size_t j = 0; j + filter->cols < input->cols; ++j)
         {
-            int sum = 0;
             for (size_t k = 0; k < filter->lines; ++k)
             {
                 for (size_t l = 0; l < filter->cols; ++l)
                 {
-                    int inputElt = input->matrix[i + k][j + l];
-                    int outputElt = inputElt * filter->matrix[l][k];
+                    float inputElt = input->matrix[i + k][j + l];
+                    float outputElt = inputElt * filter->matrix[l][k];
+                    // if (i < 1 && j < 10)
+                        // printf("\noutput conv: %f\n", outputElt);                    
                     sum += outputElt;
                 }
             }
+            // ReLu
             if (sum < 0)
                 sum = 0;
             setElement(conv_matrix, sum, lines, cols);
@@ -303,6 +299,15 @@ struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
         cols = 0;
         lines++;
     }
+
+   /* for (size_t i = 0; i < conv_matrix->lines; ++i)
+    {
+        for (size_t j = 0; j < conv_matrix->cols; ++j)
+        {
+            float elt = conv_matrix->matrix[i][j] / maxSum;
+            setElement(conv_matrix, elt, i, j);
+        }
+    } */
 
     return conv_matrix;
 }
@@ -337,16 +342,6 @@ void free_hidden_layer(struct HiddenLayer *HiddenLayer)
     
     if (!l->layers)
         return;
-
-    if (l->weights && l->bias)
-    {
-        struct Matrix *m = l->layers[0];
-        for (size_t i = 0; i < m->lines; ++i)
-        {
-            free_weight(l->weights[i]);
-            free_weight(l->bias[i]);
-        }
-    }
     free_pixels_matrices(l->layers, HiddenLayer->nbLayers);
     
     free(HiddenLayer);
@@ -382,10 +377,8 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
 
     // Allocate enough space for our convolved features (4 input images * nbFilters)
     size_t nb_convolved_features = (SIZE_INPUTS * filters->nbFilters);
-    struct Matrix **convolved_features = malloc(nb_convolved_features * sizeof(struct Matrix*));
-    if (!convolved_features)
-        err(1, "neuralNet.run(): Coudln't allocate convolved_features.");
-
+    struct Matrix **convolved_features = xmalloc(nb_convolved_features, sizeof(struct Matrix*));
+   
     size_t i = 0;
     size_t c = 0;
     
@@ -399,50 +392,51 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
             printf(".");
 
             // Pad the input image before convolution
-            struct Matrix *padded = pad_input(neuralnet->input[i], 2);
+            struct Matrix *padded = pad_input(neuralnet->input[i], 1);
 
             convolved_features[c++] = convolution(padded, filters->filters[f]);
             SDL_Surface *surf = pixels_to_surface(convolved_features[c - 1]);
             display_image(surf);
             SDL_FreeSurface(surf);
             free_matrix(padded);
+
+
             f++;
         }
         i++;
     }
 
-    return init_hiddenLayer(convolved_features, nb_convolved_features, 0);
+    return init_hiddenLayer(convolved_features, nb_convolved_features);
 }
 
 struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
 {
     size_t nb_pooled_features = neuralnet->convolutionLayer->nbLayers;
-    struct Matrix **pooled_features = malloc(nb_pooled_features * sizeof(struct Matrix));
-    if (!pooled_features)
-        err(1, "neuralNet.run(): Couldn't allocate pooled_features");
+    struct Matrix **pooled_features = xmalloc(nb_pooled_features, sizeof(struct Matrix));
+
     size_t i = 0;
     while (i < nb_pooled_features)
     {
+        struct Matrix *filter = init_matrix(2, 2);
+        fill_matrix(filter, -1);
         pooled_features[i] = NULL;
         printf(".");
-        pooled_features[i] = pooling(neuralnet->convolutionLayer->layers[i], neuralnet->filters->filters[0], 2);
-        SDL_Surface *surf = pixels_to_surface(pooled_features[i]);
-        display_image(surf);
-        SDL_FreeSurface(surf);
+        pooled_features[i] = pooling(neuralnet->convolutionLayer->layers[i], filter, 3);
+        // SDL_Surface *surf = pixels_to_surface(pooled_features[i]);
+        // display_image(surf);
+        // SDL_FreeSurface(surf);
         i++;
     }
 
 
-    return init_hiddenLayer(pooled_features, nb_pooled_features, 0);
+    return init_hiddenLayer(pooled_features, nb_pooled_features);
 }
 
 struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
 {
     // Flat matrices process.
-    struct FullyConnected *fullyConnected =  malloc(sizeof(struct FullyConnected));
-    if (!fullyConnected)
-        err(1, "neuralNet.run_flatting(): Couldn't allocate fullyConnected.");
-    
+    struct FullyConnected *fullyConnected =  xmalloc(1, sizeof(struct FullyConnected));
+     
     fullyConnected->flatSize = 0;
     fullyConnected->flatLayer = flatMatrices(neuralnet->pooled_feature->layers, neuralnet->pooled_feature->nbLayers);
     for (size_t i = 0; i < neuralnet->pooled_feature->nbLayers; ++i)
@@ -452,7 +446,26 @@ struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
     fullyConnected->biases = init_weights(fullyConnected->flatSize, 1);
 
     return fullyConnected;
+}
 
+float *normalize_flat(float *out)
+{
+    float max = -1;
+    float min = (float) INT64_MAX;
+
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+    {
+        max = MAX(max, out[i]);
+        min = MIN(min, out[i]);
+    }
+
+    float den = max-min;
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+    {
+        out[i] = (out[i] - min) / den;
+    }
+
+    return out;
 }
 
 enum ImageType run(const char *path)
@@ -469,40 +482,31 @@ enum ImageType run(const char *path)
 
     neuralnet->fullyConnected = run_flatting(neuralnet);
 
-    double probabilities[5];
-    // double max = 0;
-    // double min = (double) SIZE_MAX;
-    for (size_t i = 0 ; i < SIZE_OUTPUTS; ++i)
-    {
-        double dotProduct = 0;
-        for (size_t j = 0; j < neuralnet->fullyConnected->flatSize; ++j)
-        {
-            dotProduct = dotProduct + (neuralnet->fullyConnected->flatLayer[j] * neuralnet->fullyConnected->weights->matrix[j][i]) + neuralnet->fullyConnected->biases->matrix[j][0];
-        }
-        probabilities[i] = dotProduct;
-        // max = (max > probabilities[i]) ? max : probabilities[i];
-        // min = (min < probabilities[i]) ? min: probabilities[i];
-        printf("\n%ld: %f\n", i, probabilities[i]);
-    }
 
+    float *probabilities = apply_weights(neuralnet->fullyConnected);
+    probabilities = normalize_flat(probabilities);
 
+    float output[SIZE_OUTPUTS];
+   
     for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
     {
-        // probabilities[i] = 1 / ((max - min) * (probabilities[i] - max));
-        printf("Normalized probabilitiy[%ld] = %f\n", i, probabilities[i]);
-        double num = (double) exp(probabilities[i]) ;
-        double den = 0;
-        for (size_t j = 0; j < SIZE_INPUTS; ++j)
+        float num = expf(probabilities[i]);
+        printf("input = %f\n", num);
+
+        float den = 0;
+        for (size_t j = 0; j < SIZE_OUTPUTS; ++j)
         {
-            den = den + exp(probabilities[j]);
+            float elt = probabilities[j];
+            den += expf(elt);
             // printf("num: %f, den: %f\n", num, den);
         }
-        probabilities[i] = num / den;
-        printf("\nnum: %f, den: %f\n", num, den);
-        printf("%ld: %f\n", i, probabilities[i]);
+        output[i] = num / den;
+        printf("apply weights: %f / %f = %f\n", num, den, output[i]);
     }
 
+    free(probabilities);
     free_cnn(neuralnet);
+
 
     return 0;
 }

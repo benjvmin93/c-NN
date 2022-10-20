@@ -10,20 +10,18 @@ struct Weights
 {
     size_t cols;
     size_t lines;
-    double **matrix;
+    float **matrix;
 };
 
 struct HiddenLayer
 {
     struct Matrix **layers;
     size_t nbLayers;
-    struct Weights **weights;
-    struct Weights **bias;
 };
 
 struct FullyConnected
 {
-    double *flatLayer;
+    float *flatLayer;
     size_t flatSize;
     struct Weights *weights;
     struct Weights *biases;
@@ -31,15 +29,15 @@ struct FullyConnected
 
 struct NeuralNet
 {
-    struct Matrix **input;
     struct Filter *filters;
+    struct Matrix **input;
     struct HiddenLayer *convolutionLayer;
     struct HiddenLayer *pooled_feature;
     struct FullyConnected *fullyConnected;
 };
 
 struct NeuralNet* init_cnn(const char* file);
-struct HiddenLayer *init_hiddenLayer(struct Matrix **layer, size_t nbLayers, int initWeights);
+struct HiddenLayer *init_hiddenLayer(struct Matrix **layer, size_t nbLayers);
 
 void free_cnn(struct NeuralNet* neuralNet);
 void free_hidden_layer(struct HiddenLayer *HiddenLayer);

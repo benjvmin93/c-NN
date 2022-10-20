@@ -1,29 +1,23 @@
-#include <stdint.h>
 #define _GNU_SOURCE
+#define _DEFAULT_SOURCE
 
 #include "matrix.h"
+#include "xmalloc.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <err.h>
 #include <errno.h>
+#include <sys/time.h>
 
 struct Matrix *init_matrix(size_t cols, size_t lines)
 {
-    struct Matrix *m = malloc(sizeof(struct Matrix));
-    if (!m)
-        return NULL;
-    m->matrix = malloc(lines * sizeof(int*));
-    if (!m->matrix)
-        return NULL;
+    struct Matrix *m = xmalloc(1, sizeof(struct Matrix));
+    m->matrix = xmalloc(lines, sizeof(float*));
 
     for (size_t i = 0; i < lines; ++i)
-    {
-        m->matrix[i] = malloc(cols * sizeof(int));
-        if (!m->matrix[i])
-            return NULL;
-    }
+        m->matrix[i] = xmalloc(cols, sizeof(float));
     
     m->cols = cols;
     m->lines = lines;
@@ -44,8 +38,8 @@ void print_matrix(struct Matrix *m)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            int **matrix = m->matrix;
-            printf("%d", matrix[i][j]);
+            float **matrix = m->matrix;
+            printf("%f", matrix[i][j]);
             if (j == m->cols - 1)
                 printf("\n");
             else
@@ -72,11 +66,16 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
     if (!m->matrix)
         return;
     
-    int **matrix = m->matrix;
+    float **matrix = m->matrix;
+    // int t;
+
+    struct timeval tm;
+    gettimeofday(&tm, NULL);
+    srandom(tm.tv_sec + tm.tv_usec * 1000000ul);
     for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
-        {
+        {      
             if (dbgFlag == 0)
                 matrix[i][j] = 0;
             else if (dbgFlag == 1)
@@ -84,17 +83,24 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
             else if (dbgFlag == 2)
                 matrix[i][j] = i * m->cols + j;
             else
-                matrix[i][j] = rand() % 2;
+            {
+                int rand = random() % 20;
+                if (rand != 0)
+                    rand = rand + (-10);
+
+                matrix[i][j] = rand;
+            }
         }
     }
 }
+
 void clear_matrix(struct Matrix *m)
 {
     if (!m)
         return;
     if (!m->matrix)
         return;
-    int **matrix = m->matrix;
+    float **matrix = m->matrix;
     for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
@@ -129,7 +135,7 @@ int getElement(struct Matrix *m, int i, int j)
         err(1, "Matrix.getElement: element m->matrix is NULL.");
     return m->matrix[i][j];
 }
-void setElement(struct Matrix *m, int element, int i, int j)
+void setElement(struct Matrix *m, float element, int i, int j)
 {
     if (!m)
         return;
@@ -153,7 +159,7 @@ int isEqual(struct Matrix *m1, struct Matrix *m2)
     return 1;
 }
 
-double *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
+float *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
 {
     size_t size = 0;
     for (size_t i = 0; i < nbMatrices; ++i)
@@ -161,7 +167,7 @@ double *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
         size += matrices[i]->cols * matrices[i]->lines;
     }
 
-    double *flat = calloc(size, sizeof(double));
+    float *flat = calloc(size, sizeof(float));
     if (!flat)
         err(1, "matrix.flatMatrices(): Couldn't allocate flat.");
     
@@ -176,7 +182,7 @@ double *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
     return flat;
 }
 
-double *flatMatrix(struct Matrix *m, double *ptr)
+float *flatMatrix(struct Matrix *m, float *ptr)
 {
     if (!m)
         return NULL;
@@ -187,7 +193,8 @@ double *flatMatrix(struct Matrix *m, double *ptr)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {
-            ptr[i * m->cols + j] = (double) m->matrix[i][j];
+            ptr[i * m->cols + j] = m->matrix[i][j];
+            // printf("flatMatrix: %f\n", ptr[i * m->cols + j]);
         }
     }
     return ptr;

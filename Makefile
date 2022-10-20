@@ -7,7 +7,7 @@ all: src/main.c src/NeuralNetwork/neuralNet.c
 	${CC} ${CFLAGS} ${OBJ} ${LIB} -o CNN
 
 dbg: src/main.c src/NeuralNetwork/neuralNet.c 
-	${CC} ${CFLAGS} -g ${OBJ} ${LIB} -o CNN-dbg
+	${CC} ${CFLAGS} -g ${OBJ} ${LIB} -o CNN
 
 test:
 	./tests/run-test.sh

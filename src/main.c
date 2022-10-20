@@ -4,14 +4,17 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <stdbool.h>
 
 void usage()
 {
-    printf("Usage:\n./CNN {PATH} [--train]\n");
+    printf("Usage:\n./CNN [--train] [--verbose] {PATH}\n");
 }
 
 int main(int argc, char **argv)
 {
+    bool VERBOSE = false;
+    const char *path = NULL;
     if (argc == 1)
     {
         usage();
@@ -22,6 +25,18 @@ int main(int argc, char **argv)
         train(argv[2]);
         return 0;
     }
+    else if (!strcmp(argv[1], "--verbose") && argv[2])
+    {
+        path = argv[2];
+        VERBOSE = true;
+    }
+    else 
+    {
+        path = argv[1];
+    }
 
-    return run(argv[1]);
+    float *predictions = predict(path, VERBOSE);
+    free(predictions);
+
+    return 0;
 }

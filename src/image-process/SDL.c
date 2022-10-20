@@ -162,15 +162,12 @@ void grayscale(SDL_Surface* image_surface){
 			SDL_GetRGB(pixel, image_surface->format, &r, &g, &b);
 			avg = 0.3 * r + 0.59 * g + 0.11 * b;
 			r = avg;
-            // printf("avg: %d\n", avg);
 			g = r;
 			b = r;
 			pixel = SDL_MapRGB(image_surface->format, r,g,b);
-            // printf("pixel: %d\n", pixel);
 			set_pixel(image_surface,j, i, pixel);
 		}
 	}
-    printf("Grayscale successfully applied to image !\n");
 }
 
 SDL_Surface *init_and_copy_img(const char *path)

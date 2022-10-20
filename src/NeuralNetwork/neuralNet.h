@@ -5,6 +5,7 @@
 #include "filter.h"
 
 #include <stdlib.h>
+#include <stdbool.h>
 
 struct Weights
 {
@@ -34,9 +35,10 @@ struct NeuralNet
     struct HiddenLayer *convolutionLayer;
     struct HiddenLayer *pooled_feature;
     struct FullyConnected *fullyConnected;
+    bool verbose;
 };
 
-struct NeuralNet* init_cnn(const char* file);
+struct NeuralNet* init_cnn(const char* file, bool verbose);
 struct HiddenLayer *init_hiddenLayer(struct Matrix **layer, size_t nbLayers);
 
 void free_cnn(struct NeuralNet* neuralNet);
@@ -47,7 +49,7 @@ struct Matrix *convolution(struct Matrix *in, struct Matrix *m);
 struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, int stride);
 struct Matrix *generate_filter(size_t cols, size_t lines);
 
-enum ImageType run(const char *path);
+float *predict(const char *path, bool verbose);
 void train(const char *dataPath);
 
 #endif

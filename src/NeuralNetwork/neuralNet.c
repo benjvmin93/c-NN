@@ -19,10 +19,12 @@
 #include <sys/time.h>
 
 #define SIZE_INPUTS 1
-#define SIZE_OUTPUTS 5
+#define SIZE_OUTPUTS 3
 
 #define MAX(X,Y) (X < Y) ? Y : X
 #define MIN(X, Y) (X < Y) ? X : Y
+
+const char *LABELS[5] = { "Animal", "Vehicule", "Woman", "Man", "Child" };
 
 /*
 * Initialize pixels matrices from SDL_Surface
@@ -97,23 +99,60 @@ struct HiddenLayer *init_hiddenLayer(struct Matrix **layers, size_t nbLayers)
     return HiddenLayer;
 }
 
+float *normalize_flat(float *out, size_t length)
+{
+    float max = -1;
+    float min = (float) INT64_MAX;
+
+    for (size_t i = 0; i < length; ++i)
+    {
+        max = MAX(max, out[i]);
+        min = MIN(min, out[i]);
+    }
+
+    float den = max-min;
+    for (size_t i = 0; i < length; ++i)
+    {
+        out[i] = (out[i] - min) / den;
+    }
+
+    return out;
+}
+
 float *apply_weights(struct FullyConnected *fullyConnected)
 {
-    float *out = xmalloc(SIZE_OUTPUTS, sizeof(float));
+    float **out = xmalloc(SIZE_OUTPUTS, sizeof(float *));
+
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+        out[i] = xmalloc(fullyConnected->flatSize, sizeof(float));
+    
     float *flat = fullyConnected->flatLayer;
     struct Weights *weights = fullyConnected->weights;
     struct Weights *bias = fullyConnected->biases;
 
     for (size_t o = 0; o < SIZE_OUTPUTS; ++o)
     {
-        out[o] = 0;
         for (size_t l = 0; l < fullyConnected->flatSize; ++l)
         {
-            out[o] += (flat[l] * weights->matrix[l][o]) + bias->matrix[l][0];
+            out[o][l] = (flat[l] * weights->matrix[l][o]) + bias->matrix[l][0];
         }
     }
 
-    return out;
+    float *results = xmalloc(SIZE_OUTPUTS, sizeof(float));
+
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+    {
+        results[i] = 0;
+        out[i] = normalize_flat(out[i], fullyConnected->flatSize);
+        for (size_t j = 0; j < fullyConnected->flatSize; ++j)
+            results[i] += out[i][j];
+    }
+
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+        free(out[i]);
+    free(out);
+
+    return results;
 }
 
 void train(const char *dataPath)
@@ -426,24 +465,24 @@ struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
     return fullyConnected;
 }
 
-float *normalize_flat(float *out)
+/*
+* Apply softmax activation function over a vector.
+*/
+float* activation(float *vector, size_t length)
 {
-    float max = -1;
-    float min = (float) INT64_MAX;
-
-    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+    float num = 0;
+    float den = 0;
+    for (size_t i = 0; i < length; ++i)
     {
-        max = MAX(max, out[i]);
-        min = MIN(min, out[i]);
+        den += vector[i];
     }
 
-    float den = max-min;
-    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+    for (size_t i = 0; i < length; ++i)
     {
-        out[i] = (out[i] - min) / den;
+        num = vector[i];
+        vector[i] = num / den;
     }
-
-    return out;
+    return vector;
 }
 
 float *run(const char *path, bool verbose)
@@ -455,46 +494,29 @@ float *run(const char *path, bool verbose)
     neuralnet->fullyConnected = run_flatting(neuralnet);
 
     float *probabilities = apply_weights(neuralnet->fullyConnected);
-    probabilities = normalize_flat(probabilities);
 
-    float *output = xmalloc(SIZE_OUTPUTS, sizeof(float));
-   
-    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
-    {
-        float num = expf(probabilities[i]);
-
-        float den = 0;
-        for (size_t j = 0; j < SIZE_OUTPUTS; ++j)
-        {
-            float elt = probabilities[j];
-            den += expf(elt);
-        }
-        output[i] = num / den;
-    }
-
-    free(probabilities);
+    probabilities = activation(probabilities, SIZE_OUTPUTS);
     free_cnn(neuralnet);
-    return output;
+    return probabilities;
 }
 
 float *predict(const char *path, bool verbose)
 {
     float *predictions = run(path, verbose);
 
+    size_t posMax = 0;
     for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
     {
-        if (i == 0)
-            printf("Animal: ");
-        else if (i == 1)
-            printf("Vehicule: ");
-        else if (i == 2)
-            printf("Woman: ");
-        else if (i == 3)
-            printf("Man: ");
-        else
-            printf("Child: ");
-        printf("%f\n", predictions[i]);
+        posMax = (predictions[i] > predictions[posMax]) ? i : posMax;
+        if (verbose)
+        {
+            printf("%s: ", LABELS[i]);
+            printf("%f\n", predictions[i]);
+        }
     }
+    
+    printf("\nPredicted %s: %f\n", LABELS[posMax], predictions[posMax]);
+
 
     return predictions;
 }

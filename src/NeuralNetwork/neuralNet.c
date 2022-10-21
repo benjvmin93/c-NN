@@ -19,7 +19,7 @@
 #include <sys/time.h>
 
 #define SIZE_INPUTS 1
-#define SIZE_OUTPUTS 3
+#define SIZE_OUTPUTS 5
 
 #define MAX(X,Y) (X < Y) ? Y : X
 #define MIN(X, Y) (X < Y) ? X : Y
@@ -35,9 +35,6 @@ struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
 {
     Uint8 r, g, b;
     struct Matrix* pixels = init_matrix(copy->w, copy->h);
-    /* struct Matrix *redPixels = init_matrix(copy->w, copy->h);
-    struct Matrix *greenPixels = init_matrix(copy->w, copy->h);
-    struct Matrix *bluePixels = init_matrix(copy->w, copy->h); */
     
     for (int i = 0; i < copy->h; ++i)
     {
@@ -45,11 +42,7 @@ struct Matrix **init_matrices_and_set_pixels(SDL_Surface *copy)
         {
             Uint32 pixel = getpixel(copy, j, i);
             SDL_GetRGB(pixel, copy->format, &r, &g, &b);
-            
             setElement(pixels, (float) pixel, i, j);
-            // setElement(redPixels, r, i, j);
-            // setElement(greenPixels, g, i, j);
-            // setElement(bluePixels, b, i, j);
         }
     } 
 
@@ -177,6 +170,16 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
     neuralnet->input = input;
     neuralnet->filters = init_filter(NONE);
 
+    if (verbose)
+    {
+        printf("Filters:\n");
+        for (size_t i = 0; i < neuralnet->filters->nbFilters; ++i)
+        {
+            print_matrix(neuralnet->filters->filters[i]);
+            printf("\n");
+        }
+    }
+
     neuralnet->convolutionLayer = NULL;
     neuralnet->pooled_feature = NULL;
     neuralnet->fullyConnected = NULL;
@@ -202,11 +205,6 @@ struct Matrix *pad_input(struct Matrix *m, size_t padSize)
     }
 
     return padded_input;
-}
-
-float Max(float a, float b)
-{
-    return a > b ? a : b;
 }
 
 int dotProduct(struct Matrix *input, size_t i, size_t j, struct Matrix *filter)
@@ -236,7 +234,7 @@ float MaxPooling(struct Matrix *input, size_t i, size_t j, struct Matrix *filter
     {
         for (size_t l = j; l < j + filter->cols; ++l)
         {
-            max = Max(max, mat[k][l]);
+            max = MAX(max, mat[k][l]);
         }
     }
 

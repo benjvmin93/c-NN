@@ -12,7 +12,7 @@ UBlack='\033[4;30m'
 CC=gcc
 CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -fsanitize=address"
 
-MATRIX_FILES="src/utils/matrix.c"
+MATRIX_FILES="src/utils/matrix.c src/utils/xmalloc.c"
 NN_FILES="src/NeuralNetwork/neuralNet.c src/image-process/SDL.c src/NeuralNetwork/filter.c"
 
 TESTS_DONE=0

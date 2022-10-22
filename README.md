@@ -1,6 +1,6 @@
 # Basic CNN
 
-This project is aiming to learn more about neural networks and especially convolutional neural networks. It aims to recognize images such as humans, animals, vehicules and objects.
+This project is aiming to learn more about neural networks and especially convolutional neural networks. It aims to recognize images such as humans, animals, vehicules and objects. It is fully implemented in C and aims to be fast and memory efficient.
 
 ## Informations
 

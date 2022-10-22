@@ -8,26 +8,10 @@
 #define NB_FILTERS 5
 #define SIZE_FILTER 3
 
-struct Filter *init_filter(enum ImageType imageType)
+struct Filter *init_filter()
 {
     struct Filter *filters = xmalloc(1, sizeof(struct Filter));
-   
-    switch (imageType)
-    {
-        case ANIMAL:
-            break;
-        case VEHICULE:
-            break;
-        case WOMAN:
-            break;
-        case MAN:
-            break;
-        case CHILD:
-            break;
-        default:
-            break;
-    }
-
+ 
     filters->nbFilters = NB_FILTERS;
 
     filters->filters = xmalloc(filters->nbFilters, sizeof(struct Matrix *));

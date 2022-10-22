@@ -38,6 +38,15 @@ struct NeuralNet
     bool verbose;
 };
 
+enum Labels
+{
+    NONE = -1,
+    CAT,
+    DOG,
+    VEHICULE,
+    HUMAN
+};
+
 struct NeuralNet* init_cnn(const char* file, bool verbose);
 struct HiddenLayer *init_hiddenLayer(struct Matrix **layer, size_t nbLayers);
 
@@ -50,6 +59,6 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
 struct Matrix *generate_filter(size_t cols, size_t lines);
 
 float *predict(const char *path, bool verbose);
-void train(const char *dataPath);
+void train(const char *dataPath, bool verbose, int epoch);
 
 #endif

@@ -4,5 +4,5 @@
 #include<stdlib.h>
 
 void *xmalloc(size_t nbElt, size_t size);
-
+void *xcalloc(size_t nbElt, size_t size);
 #endif

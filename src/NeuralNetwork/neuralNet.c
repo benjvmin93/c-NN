@@ -3,6 +3,7 @@
 #include "neuralNet.h"
 #include "../utils/matrix.h"
 #include "../utils/xmalloc.h"
+#include "../utils/files.h"
 #include "../image-process/SDL.h"
 #include "filter.h"
 
@@ -19,12 +20,12 @@
 #include <sys/time.h>
 
 #define SIZE_INPUTS 1
-#define SIZE_OUTPUTS 5
+#define SIZE_OUTPUTS 4
 
 #define MAX(X,Y) (X < Y) ? Y : X
 #define MIN(X, Y) (X < Y) ? X : Y
 
-const char *LABELS[5] = { "Animal", "Vehicule", "Woman", "Man", "Child" };
+const char *LABELS[SIZE_OUTPUTS] = { "Cat", "Dog", "Vehicule", "Human" };
 
 /*
 * Initialize pixels matrices from SDL_Surface
@@ -148,12 +149,6 @@ float *apply_weights(struct FullyConnected *fullyConnected)
     return results;
 }
 
-void train(const char *dataPath)
-{
-    dataPath++;
-    return;
-}
-
 struct NeuralNet* init_cnn(const char* file, bool verbose)
 {
     // Load image and get the pixel input matrices.
@@ -168,7 +163,7 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
     struct NeuralNet *neuralnet = xmalloc(1, sizeof(struct NeuralNet));
     neuralnet->verbose = verbose;
     neuralnet->input = input;
-    neuralnet->filters = init_filter(NONE);
+    neuralnet->filters = init_filter();
 
     if (verbose)
     {
@@ -520,6 +515,8 @@ float *predict(const char *path, bool verbose)
     return predictions;
 }
 
+
+
 /*
 * Compute loss after forward propagation according to cross entropy formula.
 */
@@ -535,9 +532,54 @@ float compute_loss(float *predictions, float *expected)
     return loss;
 }
 
+float *getExpectedPredictions(const char *dataPath)
+{
+    float *expected = xcalloc(SIZE_OUTPUTS, sizeof(float));
+
+    size_t offset = strlen("utils/normalized-images/");
+
+    if (offset > strlen(dataPath))
+        err(1, "neuralNet.getExpectedPredictions(): offset > datalen.");
+    
+    if (!strcmp(dataPath + offset, "cat"))
+        expected[CAT] = 1;
+    else if (!strcmp(dataPath + offset, "dog"))
+       expected[DOG] = 1;
+    else if (!strcmp(dataPath + offset, "human"))
+       expected[HUMAN] = 1;
+    else if (!strcmp(dataPath + offset, "vehicule"))
+       expected[VEHICULE] = 1;
+    else
+        err(1, "neuralNet.getExpectedPredictions(): label %s is not recognized.", dataPath + offset);
+
+    return expected;
+}
+
 void back_propagation(struct NeuralNet *neuralnet, float *predictions, float *expected)
 {
     float loss = compute_loss(predictions, expected);
-    neuralnet++;
-    loss++;
+
+}
+
+/*
+* Training function.
+* ${dataPath} argument is the directory name containing all the images the network will be training on.
+*/
+void train(const char *dataPath, bool verbose, int epoch)
+{
+    float *expected = getExpectedPredictions(dataPath);
+    char **images = getFileNamesFromDir(dataPath);
+    if (!*images)
+        err(1, "neuralNet.train(): No images found inside %s directory.", dataPath);
+
+    while(epoch > 0)
+    {
+        while (*images)
+        {
+            char *imagePath = xmalloc((strlen(*images) + strlen(dataPath) + 1), sizeof(char));
+            float *predictions = run(imagePath, verbose);
+
+
+        }
+    }
 }

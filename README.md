@@ -30,6 +30,7 @@ Not implemented yet.
 ### Run
 
 To try the network on one of your image, just run
+
 ```make```
 
 ```./CNN [--verbose] ${PATH-TO-IMAGE}```

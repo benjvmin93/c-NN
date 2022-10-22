@@ -495,6 +495,7 @@ float *run(const char *path, bool verbose)
 
     probabilities = activation(probabilities, SIZE_OUTPUTS);
     free_cnn(neuralnet);
+
     return probabilities;
 }
 
@@ -517,4 +518,26 @@ float *predict(const char *path, bool verbose)
 
 
     return predictions;
+}
+
+/*
+* Compute loss after forward propagation according to cross entropy formula.
+*/
+float compute_loss(float *predictions, float *expected)
+{
+    float loss = 0;
+
+    for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
+        loss += expected[i] * log(predictions[i]);
+    
+    loss = -loss;
+
+    return loss;
+}
+
+void back_propagation(struct NeuralNet *neuralnet, float *predictions, float *expected)
+{
+    float loss = compute_loss(predictions, expected);
+    neuralnet++;
+    loss++;
 }

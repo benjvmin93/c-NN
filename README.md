@@ -33,7 +33,7 @@ To try the network on one of your image, just run
 
 ```make```
 
-```./CNN [--verbose] ${PATH-TO-IMAGE}```
+```./CNN [-v] [-t ${PATH-TO-TRAINING-FOLDER}] [-i ${PATH-TO-IMAGE}]```
 
-Verbose option allows to see every step of the prediction process including convolution and pooling outputs.
-Don't forget to normalize your image.
+```-v``` option allows to see every step of the prediction process including convolution and pooling outputs.
+Don't forget to normalize your image !

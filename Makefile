@@ -19,4 +19,4 @@ test-matrix:
 	./tests/run-test.sh matrix
 
 clean:
-	rm -f ./tests/*.c ./tests/compilation.log CNN CNN-dbg
+	rm -f ./tests/*.c ./tests/compilation.log CNN

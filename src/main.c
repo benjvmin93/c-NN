@@ -22,7 +22,7 @@ int main(int argc, char **argv)
     }
     if (!strcmp(argv[1], "--train") && argv[2])
     {
-        train(argv[2]);
+        train(argv[2], VERBOSE, 10);
         return 0;
     }
     else if (!strcmp(argv[1], "--verbose") && argv[2])

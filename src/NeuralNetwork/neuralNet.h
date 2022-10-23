@@ -35,15 +35,15 @@ struct NeuralNet
     struct HiddenLayer *convolutionLayer;
     struct HiddenLayer *pooled_feature;
     struct FullyConnected *fullyConnected;
+    float *predictions;
     bool verbose;
 };
 
 enum Labels
 {
-    NONE = -1,
-    CAT,
+    CAT = 0,
     DOG,
-    VEHICULE,
+    CAR,
     HUMAN
 };
 

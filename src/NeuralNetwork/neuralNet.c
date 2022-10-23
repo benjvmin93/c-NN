@@ -1,5 +1,7 @@
 #define _DEFAULT_SOURCE
 
+#include <string.h>
+
 #include "neuralNet.h"
 #include "../utils/matrix.h"
 #include "../utils/xmalloc.h"
@@ -25,7 +27,7 @@
 #define MAX(X,Y) (X < Y) ? Y : X
 #define MIN(X, Y) (X < Y) ? X : Y
 
-const char *LABELS[SIZE_OUTPUTS] = { "Cat", "Dog", "Vehicule", "Human" };
+const char *LABELS[SIZE_OUTPUTS] = { "Cat", "Dog", "Car", "Human" };
 
 /*
 * Initialize pixels matrices from SDL_Surface
@@ -77,7 +79,7 @@ struct Weights *init_weights(size_t lines, size_t cols)
             float rand;
             while ((rand = (double) random() / RAND_MAX) == 0)
                 continue;
-            weights->matrix[i][j] = rand;
+            weights->matrix[i][j] = random();
         }
     }
 
@@ -156,8 +158,10 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
     SDL_Surface *img = load_image(file);
     grayscale(img);
     if (verbose)
+    {
         printf("Loaded image of size %dx%d (%d pixels).\n\n", img->w, img->h, img->w * img->h);
-    display_image(img);
+        display_image(img);
+    }
     struct Matrix **input = init_matrices_and_set_pixels(img);
     SDL_FreeSurface(img);
     struct NeuralNet *neuralnet = xmalloc(1, sizeof(struct NeuralNet));
@@ -178,6 +182,7 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
     neuralnet->convolutionLayer = NULL;
     neuralnet->pooled_feature = NULL;
     neuralnet->fullyConnected = NULL;
+    neuralnet->predictions = NULL;
 
     return neuralnet;
 }
@@ -478,7 +483,7 @@ float* activation(float *vector, size_t length)
     return vector;
 }
 
-float *run(const char *path, bool verbose)
+struct NeuralNet *run(const char *path, bool verbose)
 {
     struct NeuralNet *neuralnet = init_cnn(path, verbose);
 
@@ -488,34 +493,31 @@ float *run(const char *path, bool verbose)
 
     float *probabilities = apply_weights(neuralnet->fullyConnected);
 
-    probabilities = activation(probabilities, SIZE_OUTPUTS);
-    free_cnn(neuralnet);
+    neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
 
-    return probabilities;
+    return neuralnet;
 }
 
 float *predict(const char *path, bool verbose)
 {
-    float *predictions = run(path, verbose);
+    struct NeuralNet *nn = run(path, verbose);
 
     size_t posMax = 0;
     for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
     {
-        posMax = (predictions[i] > predictions[posMax]) ? i : posMax;
+        posMax = (nn->predictions[i] > nn->predictions[posMax]) ? i : posMax;
         if (verbose)
         {
             printf("%s: ", LABELS[i]);
-            printf("%f\n", predictions[i]);
+            printf("%f\n", nn->predictions[i]);
         }
     }
     
-    printf("\nPredicted %s: %f\n", LABELS[posMax], predictions[posMax]);
+    printf("\nPredicted %s: %f\n", LABELS[posMax], nn->predictions[posMax]);
 
 
-    return predictions;
+    return nn->predictions;
 }
-
-
 
 /*
 * Compute loss after forward propagation according to cross entropy formula.
@@ -532,33 +534,28 @@ float compute_loss(float *predictions, float *expected)
     return loss;
 }
 
-float *getExpectedPredictions(const char *dataPath)
+float *getExpectedPredictions(const char *dirName)
 {
     float *expected = xcalloc(SIZE_OUTPUTS, sizeof(float));
-
-    size_t offset = strlen("utils/normalized-images/");
-
-    if (offset > strlen(dataPath))
-        err(1, "neuralNet.getExpectedPredictions(): offset > datalen.");
     
-    if (!strcmp(dataPath + offset, "cat"))
+    if (!strcmp(dirName, "cat"))
         expected[CAT] = 1;
-    else if (!strcmp(dataPath + offset, "dog"))
+    else if (!strcmp(dirName, "dog"))
        expected[DOG] = 1;
-    else if (!strcmp(dataPath + offset, "human"))
+    else if (!strcmp(dirName, "human"))
        expected[HUMAN] = 1;
-    else if (!strcmp(dataPath + offset, "vehicule"))
-       expected[VEHICULE] = 1;
+    else if (!strcmp(dirName, "car"))
+       expected[CAR] = 1;
     else
-        err(1, "neuralNet.getExpectedPredictions(): label %s is not recognized.", dataPath + offset);
+        err(0, "neuralNet.getExpectedPredictions(): label %s is not recognized", dirName);
 
     return expected;
 }
 
-void back_propagation(struct NeuralNet *neuralnet, float *predictions, float *expected)
+void back_propagation(struct NeuralNet *nn, float *expected)
 {
-    float loss = compute_loss(predictions, expected);
-
+    float loss = compute_loss(nn->predictions, expected);
+    printf("Loss: %f\n", loss);
 }
 
 /*
@@ -567,19 +564,34 @@ void back_propagation(struct NeuralNet *neuralnet, float *predictions, float *ex
 */
 void train(const char *dataPath, bool verbose, int epoch)
 {
-    float *expected = getExpectedPredictions(dataPath);
-    char **images = getFileNamesFromDir(dataPath);
-    if (!*images)
-        err(1, "neuralNet.train(): No images found inside %s directory.", dataPath);
+    char **imageDir = getDirNamesFromDir(dataPath);
+    if (!*imageDir)
+        err(1, "neuralNet.train(): No directory found inside %s directory.", dataPath);
 
-    while(epoch > 0)
+    while (*imageDir)
     {
-        while (*images)
+        char *folderPath = xmalloc(strlen(dataPath) + strlen(*imageDir) + 1, sizeof(char));
+        folderPath = strcpy(folderPath, dataPath);
+        folderPath = strcat(folderPath, *imageDir);
+        printf("folder path: %s\n", folderPath);
+        char **images = getFileNamesFromDir(folderPath);
+        float *expected = getExpectedPredictions(*imageDir);
+        for (int i = 0; i < epoch; ++i)
         {
-            char *imagePath = xmalloc((strlen(*images) + strlen(dataPath) + 1), sizeof(char));
-            float *predictions = run(imagePath, verbose);
-
-
+            while (*images)
+            {
+                char *imagePath = strdup(folderPath);
+                imagePath = realloc(imagePath, strlen(imagePath) + strlen(*images) + strlen("/") + 1);
+                imagePath = strcat(imagePath, "/");
+                imagePath = strcat(imagePath, *images);
+                printf("image path: %s\n", imagePath);
+                struct NeuralNet *nn = run(imagePath, verbose);
+                back_propagation(nn, expected);
+                free_cnn(nn);
+                free(imagePath);
+                images++;
+            }
         }
+        imageDir++;
     }
 }

@@ -17,7 +17,7 @@ char **getFileNamesFromDir(const char *dataPath)
     DIR *dir = opendir(dataPath);
 
     if (!dir)
-        err(errno, "Couldn't open directory `%s`.", dataPath);
+        err(errno, "Couldn't open directory `%s`", dataPath);
     
     size_t nb_files = 0;
     char **fileNames = NULL;
@@ -46,7 +46,7 @@ char **getDirNamesFromDir(const char *dataPath)
     DIR *dir = opendir(dataPath);
 
     if (!dir)
-        err(errno, "Couldn't open directory `%s`.", dataPath);
+        err(errno, "Couldn't open directory `%s`", dataPath);
     
     size_t nb_dir = 0;
     char **dirNames = NULL;

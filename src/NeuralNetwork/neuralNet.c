@@ -396,7 +396,7 @@ void free_cnn(struct NeuralNet* neuralNet)
     free(neuralNet);
 }
 
-struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
+struct NeuralNet *run_convolution(struct NeuralNet *neuralnet, bool training)
 {
     struct Filter *filters = neuralnet->filters;
 
@@ -439,10 +439,18 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
         i++;
     }
 
-    return init_hiddenLayer(convolved_features, nb_convolved_features, biases);
+    if (!training)
+        neuralnet->convolutionLayer = init_hiddenLayer(convolved_features, nb_convolved_features, biases);
+    else
+    {
+        neuralnet->convolutionLayer->layers = convolved_features;
+        neuralnet->convolutionLayer->nbLayers = nb_convolved_features;
+    }
+
+    return neuralnet;
 }
 
-struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
+struct NeuralNet *run_pooling(struct NeuralNet *neuralnet, bool training)
 {
     size_t nb_pooled_features = neuralnet->convolutionLayer->nbLayers;
     struct Matrix **pooled_features = xmalloc(nb_pooled_features, sizeof(struct Matrix));
@@ -463,10 +471,18 @@ struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
         i++;
     }
 
-    return init_hiddenLayer(pooled_features, nb_pooled_features, NULL);
+    if (!training)
+        neuralnet->pooled_feature = init_hiddenLayer(pooled_features, nb_pooled_features, NULL);
+    else
+    {
+        neuralnet->pooled_feature->layers = pooled_features;
+        neuralnet->pooled_feature->nbLayers = nb_pooled_features;
+    }
+    
+    return neuralnet;
 }
 
-struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
+struct NeuralNet *run_flatting(struct NeuralNet *neuralnet)
 {
     // Flat matrices process.
     if (!neuralnet->fullyConnected)
@@ -490,7 +506,7 @@ struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
         fullyConnected->biases = init_weights(fullyConnected->flatSize, 1);
     }
 
-    return fullyConnected;
+    return neuralnet;
 }
 
 /*
@@ -540,31 +556,22 @@ struct NeuralNet *reset_and_load_input(const char *path, struct NeuralNet *nn)
 
 struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralnet)
 {
+    bool training = false;
     if (!neuralnet)
     {
         neuralnet = init_cnn(path, verbose);
-        neuralnet->convolutionLayer = run_convolution(neuralnet);
-        neuralnet->pooled_feature = run_pooling(neuralnet);
-        neuralnet->fullyConnected = run_flatting(neuralnet);
     }
     else
     {
+        training = true;
         neuralnet = reset_and_load_input(path, neuralnet);
-        // Convolution
-        struct HiddenLayer *convLayer = run_convolution(neuralnet);
-        neuralnet->convolutionLayer->layers = convLayer->layers;
-        neuralnet->convolutionLayer->nbLayers = convLayer->nbLayers;
-        // Pooling
-        struct HiddenLayer *poolLayer = run_pooling(neuralnet);
-        neuralnet->pooled_feature->layers = poolLayer->layers;
-        neuralnet->pooled_feature->nbLayers = poolLayer->nbLayers;
-        // Flatting
-        struct FullyConnected *fcLayer = run_flatting(neuralnet);
-        neuralnet->fullyConnected->flatLayer = fcLayer->flatLayer;
-        neuralnet->fullyConnected->flatSize = fcLayer->flatSize;
     }
 
-     float *probabilities = apply_weights(neuralnet->fullyConnected);
+    neuralnet = run_convolution(neuralnet, training);
+    neuralnet = run_pooling(neuralnet, training);
+    neuralnet = run_flatting(neuralnet);
+
+    float *probabilities = apply_weights(neuralnet->fullyConnected);
     neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
         
     return neuralnet;

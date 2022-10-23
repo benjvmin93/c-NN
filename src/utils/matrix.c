@@ -84,9 +84,7 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
                 matrix[i][j] = i * m->cols + j;
             else
             {
-                int rand = random() % 3 + (-1);
-
-
+                float rand = random() % 20  + (-10);
                 matrix[i][j] = rand;
             }
         }

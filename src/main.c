@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     const char *path = NULL;
     int opt;
 
-    while ((opt = getopt(argc, argv, "vt:")) != -1)
+    while ((opt = getopt(argc, argv, "vt:i:")) != -1)
     {
         switch (opt)
         {
@@ -31,14 +31,14 @@ int main(int argc, char **argv)
             if (path)
                 usage();
             path = optarg;
-            train(path, VERBOSE, 50);
+            train(NULL, path, VERBOSE, 50);
             return 0;
         case 'i':
             if (path)
                 usage();
             path = optarg;
-            float *predictions = predict(path, VERBOSE);
-            free(predictions);
+            struct NeuralNet *predictions = predict(path, VERBOSE);
+            free_cnn(predictions);
             break;
         default:
             usage();

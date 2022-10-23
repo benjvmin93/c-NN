@@ -79,7 +79,7 @@ struct Weights *init_weights(size_t lines, size_t cols)
             float rand;
             while ((rand = (double) random() / RAND_MAX) == 0)
                 continue;
-            weights->matrix[i][j] = random();
+            weights->matrix[i][j] = rand;
         }
     }
 
@@ -166,10 +166,21 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
     }
     struct Matrix **input = init_matrices_and_set_pixels(img);
     SDL_FreeSurface(img);
+
     struct NeuralNet *neuralnet = xmalloc(1, sizeof(struct NeuralNet));
     neuralnet->verbose = verbose;
     neuralnet->input = input;
-    neuralnet->filters = init_filter();
+
+    neuralnet->filters = NULL;
+    neuralnet->convolutionLayer = NULL;
+    neuralnet->pooled_feature = NULL;
+    neuralnet->fullyConnected = NULL;
+    neuralnet->predictions = NULL;
+
+    // If there already are filters => TRAINING MODE => we keep the same filters.
+    // Otherwise initialize them.
+    if (!neuralnet->filters)
+        neuralnet->filters = init_filter();
 
     if (verbose)
     {
@@ -180,12 +191,6 @@ struct NeuralNet* init_cnn(const char* file, bool verbose)
             printf("\n");
         }
     }
-
-    neuralnet->convolutionLayer = NULL;
-    neuralnet->pooled_feature = NULL;
-    neuralnet->fullyConnected = NULL;
-    neuralnet->predictions = NULL;
-
     return neuralnet;
 }
 
@@ -360,7 +365,7 @@ void free_hidden_layer(struct HiddenLayer *HiddenLayer)
     if (!l->layers)
         return;
     free_pixels_matrices(l->layers, HiddenLayer->nbLayers);
-    
+    free_weight(l->biases);
     free(HiddenLayer);
 }
 
@@ -385,6 +390,9 @@ void free_cnn(struct NeuralNet* neuralNet)
     }
     if (neuralNet->filters)
         free_filter(neuralNet->filters);
+    if (neuralNet->predictions)
+        free(neuralNet->predictions);
+
     free(neuralNet);
 }
 
@@ -395,7 +403,14 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
     // Allocate enough space for our convolved features (4 input images * nbFilters)
     size_t nb_convolved_features = (SIZE_INPUTS * filters->nbFilters);
     struct Matrix **convolved_features = xmalloc(nb_convolved_features, sizeof(struct Matrix*));
-    struct Weights *biases = init_weights(neuralnet->input[0]->lines, 1);
+    struct Weights *biases = NULL;
+    
+    // If the layer already exists => TRAINING MODE => we keep the same biases as before
+    // Otherwise we initialize new ones.
+    if (neuralnet->convolutionLayer)
+        biases = neuralnet->convolutionLayer->biases;
+    else 
+        biases = init_weights(neuralnet->input[0]->lines, 1);
 
     size_t i = 0;
     size_t c = 0;
@@ -448,22 +463,32 @@ struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
         i++;
     }
 
-
     return init_hiddenLayer(pooled_features, nb_pooled_features, NULL);
 }
 
 struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)
 {
     // Flat matrices process.
-    struct FullyConnected *fullyConnected =  xmalloc(1, sizeof(struct FullyConnected));
-     
-    fullyConnected->flatSize = 0;
+    if (!neuralnet->fullyConnected)
+    {
+        neuralnet->fullyConnected =  xmalloc(1, sizeof(struct FullyConnected));
+        neuralnet->fullyConnected->biases = NULL;
+        neuralnet->fullyConnected->weights = NULL;
+        neuralnet->fullyConnected->flatLayer = NULL;
+        neuralnet->fullyConnected->flatSize = 0;
+    }
+
+    struct FullyConnected *fullyConnected = neuralnet->fullyConnected;
+
     fullyConnected->flatLayer = flatMatrices(neuralnet->pooled_feature->layers, neuralnet->pooled_feature->nbLayers);
     for (size_t i = 0; i < neuralnet->pooled_feature->nbLayers; ++i)
         fullyConnected->flatSize += (neuralnet->pooled_feature->layers[i]->cols * neuralnet->pooled_feature->layers[i]->lines);
 
-    fullyConnected->weights = init_weights(fullyConnected->flatSize, SIZE_OUTPUTS);
-    fullyConnected->biases = init_weights(fullyConnected->flatSize, 1);
+    if (!fullyConnected->weights && !fullyConnected->biases)
+    {
+        fullyConnected->weights = init_weights(fullyConnected->flatSize, SIZE_OUTPUTS);
+        fullyConnected->biases = init_weights(fullyConnected->flatSize, 1);
+    }
 
     return fullyConnected;
 }
@@ -488,24 +513,50 @@ float* activation(float *vector, size_t length)
     return vector;
 }
 
-struct NeuralNet *run(const char *path, bool verbose)
+struct NeuralNet *load_input(const char *path, struct NeuralNet *nn)
 {
-    struct NeuralNet *neuralnet = init_cnn(path, verbose);
+    // Load image and get the pixel input matrices.
+    init_sdl();
+    SDL_Surface *img = load_image(path);
+    grayscale(img);
+    if (nn->verbose)
+    {
+        printf("Loaded image of size %dx%d (%d pixels).\n\n", img->w, img->h, img->w * img->h);
+        display_image(img);
+    }
+    nn->input = init_matrices_and_set_pixels(img);
+    SDL_FreeSurface(img);
 
-    neuralnet->convolutionLayer = run_convolution(neuralnet);
-    neuralnet->pooled_feature = run_pooling(neuralnet);
-    neuralnet->fullyConnected = run_flatting(neuralnet);
+    free_pixels_matrices(nn->convolutionLayer->layers, nn->convolutionLayer->nbLayers);
+    free_pixels_matrices(nn->pooled_feature->layers, nn->pooled_feature->nbLayers);
+    free(nn->fullyConnected->flatLayer);
+    nn->fullyConnected->flatSize = 0;
+    return nn;
+}
 
-    float *probabilities = apply_weights(neuralnet->fullyConnected);
-
-    neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
+struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralnet)
+{
+    if (!neuralnet)
+    {
+        neuralnet = init_cnn(path, verbose);
+    }
+    else
+    {
+        neuralnet = load_input(path, neuralnet);
+    }
+   
+        neuralnet->convolutionLayer = run_convolution(neuralnet);
+        neuralnet->pooled_feature = run_pooling(neuralnet);
+        neuralnet->fullyConnected = run_flatting(neuralnet);
+        float *probabilities = apply_weights(neuralnet->fullyConnected);
+        neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
 
     return neuralnet;
 }
 
-float *predict(const char *path, bool verbose)
+struct NeuralNet *predict(const char *path, bool verbose)
 {
-    struct NeuralNet *nn = run(path, verbose);
+    struct NeuralNet *nn = run(path, verbose, NULL);
 
     size_t posMax = 0;
     for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
@@ -520,8 +571,8 @@ float *predict(const char *path, bool verbose)
     
     printf("\nPredicted %s: %f\n", LABELS[posMax], nn->predictions[posMax]);
 
-
-    return nn->predictions;
+    free_cnn(nn);
+    return NULL;
 }
 
 /*
@@ -567,8 +618,8 @@ void back_propagation(struct NeuralNet *nn, float *expected)
 * Training function.
 * ${dataPath} argument is the directory name containing all the images the network will be training on.
 */
-void train(const char *dataPath, bool verbose, int epoch)
-{
+void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch)
+{    
     char **imageDir = getDirNamesFromDir(dataPath);
     if (!*imageDir)
         err(1, "neuralNet.train(): No directory found inside %s directory.", dataPath);
@@ -590,13 +641,23 @@ void train(const char *dataPath, bool verbose, int epoch)
                 imagePath = strcat(imagePath, "/");
                 imagePath = strcat(imagePath, *images);
                 printf("image path: %s\n", imagePath);
-                struct NeuralNet *nn = run(imagePath, verbose);
+                nn = run(imagePath, verbose, nn);
+                if (verbose)
+                {
+                    printf("Filters:\n");
+                    for (size_t i = 0; i < nn->filters->nbFilters; ++i)
+                    {
+                        print_matrix(nn->filters->filters[i]);
+                        printf("\n");
+                    }
+                }
                 back_propagation(nn, expected);
-                free_cnn(nn);
                 free(imagePath);
                 images++;
             }
         }
         imageDir++;
     }
+
+    free_cnn(nn);
 }

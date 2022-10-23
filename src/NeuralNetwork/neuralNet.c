@@ -86,11 +86,13 @@ struct Weights *init_weights(size_t lines, size_t cols)
     return weights;
 }
 
-struct HiddenLayer *init_hiddenLayer(struct Matrix **layers, size_t nbLayers)
+struct HiddenLayer *init_hiddenLayer(struct Matrix **layers, size_t nbLayers, struct Weights *biases)
 {
     struct HiddenLayer *HiddenLayer = xmalloc(1, sizeof(struct HiddenLayer));
     HiddenLayer->nbLayers = nbLayers;
     HiddenLayer->layers = layers;
+
+    HiddenLayer->biases = biases;
 
     return HiddenLayer;
 }
@@ -289,7 +291,7 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
 * Returns the convolved feature.
 */
 
-struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
+struct Matrix *convolution(struct Matrix *input, struct Matrix *filter, struct Weights *biases)
 {
     size_t conv_cols = input->cols - 2;
     size_t conv_lines = input->lines - 2;
@@ -309,7 +311,7 @@ struct Matrix *convolution(struct Matrix *input, struct Matrix *filter)
                 for (size_t l = 0; l < filter->cols; ++l)
                 {
                     float inputElt = input->matrix[i + k][j + l];
-                    float outputElt = inputElt * filter->matrix[l][k];
+                    float outputElt = (inputElt * filter->matrix[l][k]) + biases->matrix[lines][0];
                     // if (i < 1 && j < 10)
                     sum += outputElt;
                 }
@@ -393,7 +395,8 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
     // Allocate enough space for our convolved features (4 input images * nbFilters)
     size_t nb_convolved_features = (SIZE_INPUTS * filters->nbFilters);
     struct Matrix **convolved_features = xmalloc(nb_convolved_features, sizeof(struct Matrix*));
-   
+    struct Weights *biases = init_weights(neuralnet->input[0]->lines, 1);
+
     size_t i = 0;
     size_t c = 0;
     
@@ -406,8 +409,7 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
         {
             // Pad the input image before convolution
             struct Matrix *padded = pad_input(neuralnet->input[i], 1);
-
-            convolved_features[c++] = convolution(padded, filters->filters[f]);
+            convolved_features[c++] = convolution(padded, filters->filters[f], biases);
             if (neuralnet->verbose)
             {
                 SDL_Surface *surf = pixels_to_surface(convolved_features[c - 1]);
@@ -422,7 +424,7 @@ struct HiddenLayer *run_convolution(struct NeuralNet *neuralnet)
         i++;
     }
 
-    return init_hiddenLayer(convolved_features, nb_convolved_features);
+    return init_hiddenLayer(convolved_features, nb_convolved_features, biases);
 }
 
 struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
@@ -437,14 +439,17 @@ struct HiddenLayer *run_pooling(struct NeuralNet *neuralnet)
         fill_matrix(filter, -1);
         pooled_features[i] = NULL;
         pooled_features[i] = pooling(neuralnet->convolutionLayer->layers[i], filter, 3);
-        // SDL_Surface *surf = pixels_to_surface(pooled_features[i]);
-        // display_image(surf);
-        // SDL_FreeSurface(surf);
+        if (neuralnet->verbose)
+        {
+            SDL_Surface *surf = pixels_to_surface(pooled_features[i]);
+            display_image(surf);
+            SDL_FreeSurface(surf);
+        }
         i++;
     }
 
 
-    return init_hiddenLayer(pooled_features, nb_pooled_features);
+    return init_hiddenLayer(pooled_features, nb_pooled_features, NULL);
 }
 
 struct FullyConnected *run_flatting(struct NeuralNet *neuralnet)

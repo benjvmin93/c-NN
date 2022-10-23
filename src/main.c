@@ -31,7 +31,7 @@ int main(int argc, char **argv)
             if (path)
                 usage();
             path = optarg;
-            train(NULL, path, VERBOSE, 50);
+            train(NULL, path, VERBOSE, 1);
             return 0;
         case 'i':
             if (path)

@@ -513,10 +513,9 @@ float* activation(float *vector, size_t length)
     return vector;
 }
 
-struct NeuralNet *load_input(const char *path, struct NeuralNet *nn)
+struct NeuralNet *reset_and_load_input(const char *path, struct NeuralNet *nn)
 {
     // Load image and get the pixel input matrices.
-    init_sdl();
     SDL_Surface *img = load_image(path);
     grayscale(img);
     if (nn->verbose)
@@ -524,11 +523,16 @@ struct NeuralNet *load_input(const char *path, struct NeuralNet *nn)
         printf("Loaded image of size %dx%d (%d pixels).\n\n", img->w, img->h, img->w * img->h);
         display_image(img);
     }
+    free_pixels_matrices(nn->input, SIZE_INPUTS);
     nn->input = init_matrices_and_set_pixels(img);
     SDL_FreeSurface(img);
 
     free_pixels_matrices(nn->convolutionLayer->layers, nn->convolutionLayer->nbLayers);
+    nn->convolutionLayer->nbLayers = 0;
     free_pixels_matrices(nn->pooled_feature->layers, nn->pooled_feature->nbLayers);
+    nn->convolutionLayer->nbLayers = 0;
+    free(nn->predictions);
+
     free(nn->fullyConnected->flatLayer);
     nn->fullyConnected->flatSize = 0;
     return nn;
@@ -539,18 +543,30 @@ struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralne
     if (!neuralnet)
     {
         neuralnet = init_cnn(path, verbose);
-    }
-    else
-    {
-        neuralnet = load_input(path, neuralnet);
-    }
-   
         neuralnet->convolutionLayer = run_convolution(neuralnet);
         neuralnet->pooled_feature = run_pooling(neuralnet);
         neuralnet->fullyConnected = run_flatting(neuralnet);
-        float *probabilities = apply_weights(neuralnet->fullyConnected);
-        neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
+    }
+    else
+    {
+        neuralnet = reset_and_load_input(path, neuralnet);
+        // Convolution
+        struct HiddenLayer *convLayer = run_convolution(neuralnet);
+        neuralnet->convolutionLayer->layers = convLayer->layers;
+        neuralnet->convolutionLayer->nbLayers = convLayer->nbLayers;
+        // Pooling
+        struct HiddenLayer *poolLayer = run_pooling(neuralnet);
+        neuralnet->pooled_feature->layers = poolLayer->layers;
+        neuralnet->pooled_feature->nbLayers = poolLayer->nbLayers;
+        // Flatting
+        struct FullyConnected *fcLayer = run_flatting(neuralnet);
+        neuralnet->fullyConnected->flatLayer = fcLayer->flatLayer;
+        neuralnet->fullyConnected->flatSize = fcLayer->flatSize;
+    }
 
+     float *probabilities = apply_weights(neuralnet->fullyConnected);
+    neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
+        
     return neuralnet;
 }
 
@@ -624,22 +640,25 @@ void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch)
     if (!*imageDir)
         err(1, "neuralNet.train(): No directory found inside %s directory.", dataPath);
 
-    while (*imageDir)
+    size_t i = 0;
+    while (imageDir[i])
     {
-        char *folderPath = xmalloc(strlen(dataPath) + strlen(*imageDir) + 1, sizeof(char));
+        char *folderPath = xmalloc(strlen(dataPath) + strlen(imageDir[i]) + 1, sizeof(char));
         folderPath = strcpy(folderPath, dataPath);
-        folderPath = strcat(folderPath, *imageDir);
+        folderPath = strcat(folderPath, imageDir[i]);
+
         printf("folder path: %s\n", folderPath);
         char **images = getFileNamesFromDir(folderPath);
-        float *expected = getExpectedPredictions(*imageDir);
+        float *expected = getExpectedPredictions(imageDir[i]);
         for (int i = 0; i < epoch; ++i)
         {
-            while (*images)
+            size_t j = 0;
+            while (images[j])
             {
                 char *imagePath = strdup(folderPath);
-                imagePath = realloc(imagePath, strlen(imagePath) + strlen(*images) + strlen("/") + 1);
+                imagePath = realloc(imagePath, strlen(imagePath) + strlen(images[j]) + strlen("/") + 1);
                 imagePath = strcat(imagePath, "/");
-                imagePath = strcat(imagePath, *images);
+                imagePath = strcat(imagePath, images[j]);
                 printf("image path: %s\n", imagePath);
                 nn = run(imagePath, verbose, nn);
                 if (verbose)
@@ -653,11 +672,19 @@ void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch)
                 }
                 back_propagation(nn, expected);
                 free(imagePath);
-                images++;
+                j++;
             }
         }
-        imageDir++;
+        printf("\n");
+        for (size_t j = 0; images[j]; ++j)
+            free(images[j]);
+        free(images);
+        free(expected);
+        free(folderPath);
+        i++;
     }
-
+    for (size_t j = 0; imageDir[j]; ++j)
+        free(imageDir[j]);
+    free(imageDir);
     free_cnn(nn);
 }

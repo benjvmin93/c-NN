@@ -12,7 +12,7 @@ int main(void)
     for (size_t i = 0; i < 1; ++i)
     {
         printf("Filter %ld:\n", i);
-        struct Filter *filter = init_filter(NONE);
+        struct Filter *filter = init_filter();
         for(size_t i = 0; i < filter->nbFilters; ++i)
         {
             print_matrix(filter->filters[i]);

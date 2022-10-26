@@ -4,87 +4,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-void filter_null()
-{
-    for (size_t k = 3; k < 5; ++k)
-    {
-        for (size_t l = 3; l < 5; ++l)
-        {
-            struct Matrix *input = init_matrix(k, l);
-            fill_matrix(input, 1);
-
-            struct Matrix *filter = init_matrix(3, 3);
-            fill_matrix(filter, 0);
-
-            input = convolution(input, filter);
-
-            for (size_t i = 0; i < input->lines; ++i)
-            {
-                for (size_t j = 0; j < input->cols; ++j)
-                {
-                    if (input->matrix[j][i] != 0)
-                    {
-                        printf("Error: elt at pos %ld, %ld != 0.\n", j, i);
-                        printf("Input:\n");
-                        print_matrix(input);
-                        printf("\nFilter:\n");
-                        print_matrix(filter);
-                        exit(1);
-                    }
-                }
-            }
-            free_matrix(input);
-            free_matrix(filter);
-        }
-    }
-}
-
-void filter_one()
-{
-    for (size_t k = 3; k < 5; ++k)
-    {
-        for (size_t l = 3; l < 5; ++l)
-        {
-            printf("NEW LOOP:\n");
-            struct Matrix *input = init_matrix(k, l);
-            fill_matrix(input, 2);
-            struct Matrix *copy = init_matrix(k, l);
-            fill_matrix(copy, 2);
-
-            struct Matrix *filter = init_matrix(3, 3);
-            fill_matrix(filter, 1);
-
-            // printf("input:\n");
-            // print_matrix(input);
-            // printf("\nfilter:\n");
-            // print_matrix(filter);
-            input = convolution(input, filter);
-            // printf("\noutput:\n");
-            // print_matrix(input);
-
-            for (size_t i = 0; i < input->lines; ++i)
-            {
-                for (size_t j = 0; j < input->cols; ++j)
-                {
-                    if (input->matrix[j][i] != copy->matrix[j][i])
-                    {
-                        printf("Error: elt at pos %ld, %ld != 0.\n", j, i);
-                        printf("Input:\n");
-                        print_matrix(input);
-                        printf("\nCopy:\n");
-                        print_matrix(copy);
-                        exit(1);
-                    }
-                }
-            }
-            
-            free_matrix(filter);
-            free_matrix(input);
-            free_matrix(copy);
-        }
-    }
-}
-
 int main(void)
 {
     
@@ -100,6 +19,7 @@ int main(void)
             fill_matrix(input, 2);
             fill_matrix(filter, 5);
             struct Matrix *output = NULL;
+            struct Weights *biases = init_weights(input->lines, 1);
 
             if (i < 10)
             {
@@ -108,13 +28,14 @@ int main(void)
                 // print_matrix(input);
                 // printf("\nfilter:\n");
                 // print_matrix(filter);
-                output = convolution(input, filter);
+                output = convolution(input, filter, biases);
                 // printf("\noutput:\n");
                 // print_matrix(output);
             }
             free_matrix(filter);
             free_matrix(input);
             free_matrix(output);
+            free_weight(biases);
         }
         }
 

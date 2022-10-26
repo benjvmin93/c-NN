@@ -1,4 +1,5 @@
 #include "../../src/utils/matrix.h"
+#include "../../src/utils/xmalloc.h"
 
 #include <stdio.h>
 #include <assert.h>
@@ -19,7 +20,9 @@ int main(void)
                 }
             }
 
-            int *ptr = flatMatrix(m);
+            
+            float *ptr = xmalloc(m->cols * m->lines, sizeof(float));
+            ptr = flatMatrix(m, ptr);
             for (size_t i = 0; i < m->lines; ++i)
             {
                 for (size_t j = 0; j < m->cols; ++j)
@@ -29,7 +32,7 @@ int main(void)
                         printf("ERROR: different elements.\nMatrix:\n");
                         print_matrix(m);
                         printf("\npos: %ld\n", i * m->cols + j);
-                        printf("\n%d != %d\n", getElement(m, i, j), ptr[i * m->cols + j]);
+                        printf("\n%f != %f\n", getElement(m, i, j), ptr[i * m->cols + j]);
                         exit(1);
                     }
                 }

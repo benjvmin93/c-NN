@@ -18,9 +18,10 @@ float *flatMatrix(struct Matrix *m, float *ptr);
 float *flatMatrices(struct Matrix **matrices, size_t nbMatrices);
 void clear_matrix(struct Matrix *m);
 void free_matrix(struct Matrix *m);
-int getElement(struct Matrix *m, int i, int j);
+float getElement(struct Matrix *m, int i, int j);
 void setElement(struct Matrix *m, float element, int i, int j);
 void free_inside_matrix(struct Matrix *m);
+struct Matrix *transpose(struct Matrix *m);
 // struct Matrix *copyFromFile(struct Matrix *m, const char *path, int index);
 // void copyToFile(struct Matrix *m, const char *path, int index);
 

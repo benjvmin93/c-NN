@@ -3,6 +3,7 @@
 #include "utils/matrix.h"
 
 #include <bits/getopt_core.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdbool.h>
@@ -16,6 +17,8 @@ void usage()
 
 int main(int argc, char **argv)
 {
+    if (argc == 1)
+        usage();
     bool VERBOSE = false;
     const char *path = NULL;
     int opt;
@@ -37,8 +40,7 @@ int main(int argc, char **argv)
             if (path)
                 usage();
             path = optarg;
-            struct NeuralNet *predictions = predict(path, VERBOSE);
-            free_cnn(predictions);
+            free_cnn(run(path, VERBOSE, NULL));
             break;
         default:
             usage();

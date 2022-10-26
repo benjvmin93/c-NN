@@ -14,14 +14,13 @@
 struct Matrix *init_matrix(size_t cols, size_t lines)
 {
     struct Matrix *m = xmalloc(1, sizeof(struct Matrix));
-    m->matrix = xmalloc(lines, sizeof(float*));
+    m->matrix = xcalloc(lines, sizeof(float*));
 
     for (size_t i = 0; i < lines; ++i)
-        m->matrix[i] = xmalloc(cols, sizeof(float));
+        m->matrix[i] = xcalloc(cols, sizeof(float));
     
     m->cols = cols;
     m->lines = lines;
-    clear_matrix(m);
 
     return m;
 }
@@ -39,7 +38,7 @@ void print_matrix(struct Matrix *m)
         for (size_t j = 0; j < m->cols; ++j)
         {
             float **matrix = m->matrix;
-            printf("%f", matrix[i][j]);
+            printf("%d", (int) matrix[i][j]);
             if (j == m->cols - 1)
                 printf("\n");
             else
@@ -58,8 +57,11 @@ void free_inside_matrix(struct Matrix *m)
     m->matrix = NULL;
 }
 
-
-void fill_matrix(struct Matrix *m, int dbgFlag)
+/*
+* Fill a matrix according to the flag.
+* If flag is < 1 or > 2, then the matrix will be randomly filled with numbers between -9 and 9.
+*/
+void fill_matrix(struct Matrix *m, int flag)
 {
     if (!m)
         return;
@@ -72,15 +74,14 @@ void fill_matrix(struct Matrix *m, int dbgFlag)
     struct timeval tm;
     gettimeofday(&tm, NULL);
     srandom(tm.tv_sec + tm.tv_usec * 1000000ul);
+
     for (size_t i = 0; i < m->lines; ++i)
     {
         for (size_t j = 0; j < m->cols; ++j)
         {      
-            if (dbgFlag == 0)
-                matrix[i][j] = 0;
-            else if (dbgFlag == 1)
+            if (flag == 1)
                 matrix[i][j] = 1;
-            else if (dbgFlag == 2)
+            else if (flag == 2)
                 matrix[i][j] = i * m->cols + j;
             else
             {
@@ -124,7 +125,7 @@ void free_matrix(struct Matrix *m)
     free(m);
 }
 
-int getElement(struct Matrix *m, int i, int j)
+float getElement(struct Matrix *m, int i, int j)
 {
     if (!m)
         err(1, "Matrix.getElement: struct Matrix is NULL.");
@@ -177,6 +178,19 @@ float *flatMatrices(struct Matrix **matrices, size_t nbMatrices)
     }
 
     return flat;
+}
+
+struct Matrix *transpose(struct Matrix *m)
+{
+    struct Matrix *t = init_matrix(m->lines, m->cols);
+
+    for (size_t i = 0; i < m->lines; ++i)
+    {
+        for (size_t j =  0; j < m->cols; ++j)
+            t->matrix[j][i] = m->matrix[i][j];
+    }
+    return t;
+
 }
 
 float *flatMatrix(struct Matrix *m, float *ptr)

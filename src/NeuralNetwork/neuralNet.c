@@ -282,8 +282,6 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
     free_inside_matrix(pooled_feature);
     pooled_feature->matrix = m;
 
-    free_matrix(filter);
-
     return pooled_feature;
 }
 
@@ -295,7 +293,6 @@ struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, 
 * Finally apply ReLU function for each computed element of the output.
 * Returns the convolved feature.
 */
-
 struct Matrix *convolution(struct Matrix *input, struct Matrix *filter, struct Weights *biases)
 {
     size_t conv_cols = input->cols - 2;
@@ -529,6 +526,19 @@ float* activation(float *vector, size_t length)
     return vector;
 }
 
+void print_filters(struct NeuralNet *neuralnet)
+{
+    printf("Filters:\n");
+    for (size_t i = 0; i < neuralnet->filters->nbFilters; ++i)
+    {
+        print_matrix(neuralnet->filters->filters[i]);
+        printf("\n");
+    }
+}
+
+/*
+* Reset every input matrices inside the nn but keep the filters, biases and weights.
+*/
 struct NeuralNet *reset_and_load_input(const char *path, struct NeuralNet *nn)
 {
     // Load image and get the pixel input matrices.
@@ -567,6 +577,11 @@ struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralne
         neuralnet = reset_and_load_input(path, neuralnet);
     }
 
+    if (verbose)
+    {
+        print_filters(neuralnet);
+    }
+
     neuralnet = run_convolution(neuralnet, training);
     neuralnet = run_pooling(neuralnet, training);
     neuralnet = run_flatting(neuralnet);
@@ -574,28 +589,25 @@ struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralne
     float *probabilities = apply_weights(neuralnet->fullyConnected);
     neuralnet->predictions = activation(probabilities, SIZE_OUTPUTS);
         
+    predict(neuralnet);
     return neuralnet;
 }
 
-struct NeuralNet *predict(const char *path, bool verbose)
+void predict(struct NeuralNet *nn)
 {
-    struct NeuralNet *nn = run(path, verbose, NULL);
 
     size_t posMax = 0;
     for (size_t i = 0; i < SIZE_OUTPUTS; ++i)
     {
         posMax = (nn->predictions[i] > nn->predictions[posMax]) ? i : posMax;
-        if (verbose)
+        if (nn->verbose)
         {
             printf("%s: ", LABELS[i]);
             printf("%f\n", nn->predictions[i]);
         }
     }
-    
-    printf("\nPredicted %s: %f\n", LABELS[posMax], nn->predictions[posMax]);
 
-    free_cnn(nn);
-    return NULL;
+    printf("============ Predicted %s: %f ============\n", LABELS[posMax], nn->predictions[posMax]);
 }
 
 /*
@@ -631,10 +643,38 @@ float *getExpectedPredictions(const char *dirName)
     return expected;
 }
 
+void backward_kernel(struct NeuralNet *nn)
+{
+    struct Filter *filters = nn->filters;
+    struct Matrix **inLayer = nn->input;
+
+    struct Filter *new_filters = init_filter();
+
+    for (size_t f = 0; f < new_filters->nbFilters; ++f)
+    {
+        struct Matrix *oldFilter = filters->filters[f];
+        // struct Matrix *newFilter = new_filters->filters[f];
+        for (size_t k = 0; k < oldFilter->lines; ++k)
+        {
+            for (size_t l = 0; l < oldFilter->cols; ++l)
+            {
+                for (size_t i = 0; i < SIZE_INPUTS; ++i)
+                {
+                    struct Matrix *in = inLayer[i];
+                    free(transpose(in));
+                }
+            }
+        }
+    }
+
+    free_filter(new_filters);
+}
+
 void back_propagation(struct NeuralNet *nn, float *expected)
 {
     float loss = compute_loss(nn->predictions, expected);
-    printf("Loss: %f\n", loss);
+    printf("============ Loss: %f\n\n", loss);
+    backward_kernel(nn);
 }
 
 /*
@@ -654,7 +694,7 @@ void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch)
         folderPath = strcpy(folderPath, dataPath);
         folderPath = strcat(folderPath, imageDir[i]);
 
-        printf("folder path: %s\n", folderPath);
+        printf("Entering folder %s\n", folderPath);
         char **images = getFileNamesFromDir(folderPath);
         float *expected = getExpectedPredictions(imageDir[i]);
         for (int i = 0; i < epoch; ++i)
@@ -666,17 +706,8 @@ void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch)
                 imagePath = realloc(imagePath, strlen(imagePath) + strlen(images[j]) + strlen("/") + 1);
                 imagePath = strcat(imagePath, "/");
                 imagePath = strcat(imagePath, images[j]);
-                printf("image path: %s\n", imagePath);
+                printf("Processing image %s\n", imagePath);
                 nn = run(imagePath, verbose, nn);
-                if (verbose)
-                {
-                    printf("Filters:\n");
-                    for (size_t i = 0; i < nn->filters->nbFilters; ++i)
-                    {
-                        print_matrix(nn->filters->filters[i]);
-                        printf("\n");
-                    }
-                }
                 back_propagation(nn, expected);
                 free(imagePath);
                 j++;

@@ -54,13 +54,15 @@ struct Weights *init_weights(size_t lines, size_t cols);
 
 void free_cnn(struct NeuralNet* neuralNet);
 void free_hidden_layer(struct HiddenLayer *HiddenLayer);
+void free_weight(struct Weights *weights);
 
 struct Matrix *pad_input(struct Matrix *m, size_t padSize);
 struct Matrix *convolution(struct Matrix *in, struct Matrix *m, struct Weights *biases);
 struct Matrix *pooling(struct Matrix *convolved_feature, struct Matrix *filter, int stride);
 struct Matrix *generate_filter(size_t cols, size_t lines);
 
-struct NeuralNet *predict(const char *path, bool verbose);
+void predict(struct NeuralNet *nn);
+struct NeuralNet *run(const char *path, bool verbose, struct NeuralNet *neuralnet);
 void train(struct NeuralNet *nn, const char *dataPath, bool verbose, int epoch);
 
 #endif

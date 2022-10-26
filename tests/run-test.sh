@@ -13,7 +13,7 @@ CC=gcc
 CFLAGS="-std=c99 -pedantic -Werror -Wall -Wextra -fsanitize=address"
 
 MATRIX_FILES="src/utils/matrix.c src/utils/xmalloc.c"
-NN_FILES="src/NeuralNetwork/neuralNet.c src/image-process/SDL.c src/NeuralNetwork/filter.c"
+NN_FILES="src/NeuralNetwork/neuralNet.c src/image-process/SDL.c src/NeuralNetwork/filter.c src/utils/files.c"
 
 TESTS_DONE=0
 TESTS_SUCCEED=0
@@ -28,11 +28,12 @@ run_test() {
     printf "\n${BBlue}=======================RUNNING $1 TESTS=======================${NC}\n\n";
 
     for file in `ls tests/$1`; do
+        output=$(echo $file | sed -e 's/\.[^.]*$/\./')out
         if [ "$1" = "matrix" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o tests/$file >tests/compilation.log 2>&1
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} -o tests/$output >tests/compilation.log 2>&1
 
         elif [ $1 = "neuralnet" ]; then
-            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -lSDL2 -lSDL2_image -o tests/$file -lm >tests/compilation.log 2>&1
+            ${CC} ${CFLAGS} -g "tests/$1/$file" ${MATRIX_FILES} ${NN_FILES} -lSDL2 -lSDL2_image -o tests/$output -lm >tests/compilation.log 2>&1
         else
             echo "Bad arg: $1"
             exit 1
@@ -42,22 +43,22 @@ run_test() {
         printf "######################################\n\n"
 
         if [ "$COMPILE" -eq 1 ]; then
-            printf "Compilation failed: ./tests/${file}\n\n"
-            printf "tests/$1/$file: ${RED}Failed${NC}:\n"
+            printf "Compilation failed: ./tests/${output}\n\n"
+            printf "tests/$1/$output: ${RED}Failed${NC}:\n"
             cat tests/compilation.log
             echo
             TESTS_FAILED=$(($TESTS_FAILED + 1))
             continue;
         fi;
 
-        printf "Running ./tests/${file}\n\n"
-        ./tests/$file
+        printf "Running ./tests/${output}\n\n"
+        ./tests/$output
         
         if [ "$?" -eq 0 ]; then
-            printf "tests/$1/$file: ${CYAN}Succeed${NC}\n\n"
+            printf "tests/$1/$output: ${CYAN}Succeed${NC}\n\n"
             TESTS_SUCCEED=$(($TESTS_SUCCEED + 1))
         else
-            printf "tests/$1/$file: ${RED}Failed${NC}\n\n"
+            printf "tests/$1/$output: ${RED}Failed${NC}\n\n"
             TESTS_FAILED=$(($TESTS_FAILED + 1))
         fi
         TESTS_DONE=$(($TESTS_DONE + 1))

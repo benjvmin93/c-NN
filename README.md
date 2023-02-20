@@ -2,7 +2,7 @@
 
 This project is aiming to learn more about neural networks and especially convolutional neural networks. It aims to recognize images such as humans, animals, vehicules and objects. It is fully implemented in C and aims to be fast and memory efficient.
 
-## Informations
+## Information
 
 Each data passed to the neural network has to be normalized to maintain consistency over the learning of such a neural network. The choosen size is 300x300 pixels.
 
